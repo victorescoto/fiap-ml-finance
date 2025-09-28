@@ -1,6 +1,6 @@
-PY=python3
-PIP=pip
-UVICORN=uvicorn
+UV=uv
+PY=uv run python
+UVICORN=uv run uvicorn
 
 SYMBOLS="AAPL,MSFT,AMZN,GOOGL,META,NVDA,TSLA"
 REGION="us-east-1"
@@ -9,12 +9,10 @@ PREFIX="fiap-fase3"
 .PHONY: deps run-api ingest-1d-local ingest-5m-local train-local tf-init tf-apply tf-destroy fmt
 
 deps:
-	python3 -m pip install --upgrade pip
-	python3 -m pip install -r requirements.txt || true
-	python3 -m pip install -e . || true
+	uv sync
 
 run-api:
-	uvicorn app.fastapi_app.main:app --reload --port 8000
+	uv run uvicorn app.fastapi_app.main:app --reload --port 8000
 
 ingest-1d-local:
 	$(PY) app/jobs/ingest_1d.py --symbols $(SYMBOLS) --out ./data --to s3://$(PREFIX)-finance-raw --dry-run

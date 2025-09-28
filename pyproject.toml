@@ -1,9 +1,26 @@
 [build-system]
 requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "fiap-fase3-ml-finance"
 version = "0.1.0"
 description = "Serverless low-cost finance ML demo (FastAPI + yfinance + AWS)"
 authors = [{name="Victor"}]
-dependencies = []
+requires-python = ">=3.8"
+dependencies = [
+    "fastapi",
+    "uvicorn",
+    "mangum",
+    "yfinance",
+    "pandas",
+    "numpy",
+    "scikit-learn",
+    "pyarrow",
+    "boto3",
+    "python-dateutil",
+    "plotly"
+]
+
+[tool.setuptools.packages.find]
+include = ["app*"]
