@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+mangum
+yfinance
+pandas
+numpy
+scikit-learn
+pyarrow
+boto3
+python-dateutil
+plotly
