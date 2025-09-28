@@ -12,9 +12,7 @@ resource "aws_s3_bucket" "raw" {
 
 resource "aws_s3_bucket_versioning" "raw" {
   bucket = aws_s3_bucket.raw.id
-  versioning_configuration {
-    status = "Enabled"
-  }
+  versioning_configuration { status = "Enabled" }
 }
 
 resource "aws_s3_bucket" "models" {
@@ -23,9 +21,7 @@ resource "aws_s3_bucket" "models" {
 
 resource "aws_s3_bucket_versioning" "models" {
   bucket = aws_s3_bucket.models.id
-  versioning_configuration {
-    status = "Enabled"
-  }
+  versioning_configuration { status = "Enabled" }
 }
 
 resource "aws_s3_bucket" "site" {
@@ -44,7 +40,6 @@ resource "aws_glue_catalog_database" "db" {
   name = local.glue_db_name
 }
 
-# Athena WorkGroup com saída forçada no bucket dedicado
 resource "aws_athena_workgroup" "wg" {
   name = "${var.prefix}-wg"
   configuration {

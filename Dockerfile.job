@@ -1,0 +1,7 @@
+FROM public.ecr.aws/lambda/python:3.12
+
+RUN yum -y install tar gzip && yum clean all
+COPY . ${LAMBDA_TASK_ROOT}
+RUN pip install --no-cache-dir -r requirements.txt
+
+CMD [ "app.lambda_job_handler.handler" ]

@@ -1,10 +1,8 @@
-import argparse, os, sys, pathlib
+import argparse, os, pathlib
 import pandas as pd
 import yfinance as yf
-from datetime import datetime, timedelta, timezone
 import pyarrow as pa
 import pyarrow.parquet as pq
-import pyarrow.dataset as ds
 import boto3
 
 

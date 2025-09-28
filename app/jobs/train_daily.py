@@ -35,7 +35,6 @@ def main():
         print("No data found. Run ingest_1d first.")
         return
 
-    # Prepare per-symbol training and aggregate evaluation
     os.makedirs(args.models, exist_ok=True)
     report = {}
     for sym in symbols:
