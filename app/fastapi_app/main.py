@@ -4,19 +4,30 @@ from .schemas import SymbolsResponse, LatestResponse, Candle, PredictResponse
 import yfinance as yf
 from datetime import datetime
 from typing import List
+import os
+from dotenv import load_dotenv
 
-app = FastAPI(title="FIAP Fase 3 - Finance API", version="0.1.0")
+# Carregar variáveis de ambiente do .env
+load_dotenv()
+
+# Configurações a partir do .env
+API_TITLE = os.getenv("API_TITLE", "FIAP Fase 3 - Finance API")
+API_VERSION = os.getenv("API_VERSION", "0.1.0")
+SYMBOLS_ENV = os.getenv("SYMBOLS", "AAPL,MSFT,AMZN,GOOGL,META,NVDA,TSLA")
+SYMBOLS = [s.strip() for s in SYMBOLS_ENV.split(",")]
+DEBUG = os.getenv("DEBUG", "false").lower() == "true"
+
+app = FastAPI(title=API_TITLE, version=API_VERSION, debug=DEBUG)
 
 # Configuração CORS
+cors_origins = os.getenv("CORS_ORIGINS", "*").split(",")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Em produção, especificar domínios específicos
+    allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-SYMBOLS = ["AAPL", "MSFT", "AMZN", "GOOGL", "META", "NVDA", "TSLA"]
 
 
 @app.get("/health")

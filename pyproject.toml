@@ -19,7 +19,8 @@ dependencies = [
     "pyarrow",
     "boto3",
     "python-dateutil",
-    "plotly"
+    "plotly",
+    "python-dotenv"
 ]
 
 [tool.setuptools.packages.find]

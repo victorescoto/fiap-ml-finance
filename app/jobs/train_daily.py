@@ -1,9 +1,16 @@
-import argparse, pathlib, json, os
+import argparse
+import pathlib
+import json
+import os
 import pandas as pd
 from dateutil.relativedelta import relativedelta
 from datetime import datetime, timezone
+from dotenv import load_dotenv
 from app.ml.features import add_basic_features, make_label
 from app.ml.model import train_classifier, evaluate, save_model
+
+# Carregar variáveis de ambiente
+load_dotenv()
 
 
 def load_local_prices_1d(data_dir: str, months: int = 12) -> pd.DataFrame:
@@ -22,10 +29,17 @@ def load_local_prices_1d(data_dir: str, months: int = 12) -> pd.DataFrame:
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--symbols", required=True, help="comma separated list")
-    ap.add_argument("--data", default="./data")
-    ap.add_argument("--models", default="./models")
-    ap.add_argument("--months", type=int, default=12)
+    
+    # Usar variáveis de ambiente como padrão
+    default_symbols = os.getenv("SYMBOLS", "AAPL,MSFT,AMZN,GOOGL,META,NVDA,TSLA")
+    default_data_dir = os.getenv("DATA_DIR", "./data")
+    default_models_dir = os.getenv("MODELS_DIR", "./models")
+    default_train_period = int(os.getenv("ML_TRAIN_PERIOD", "12"))
+    
+    ap.add_argument("--symbols", default=default_symbols, help="comma separated list")
+    ap.add_argument("--data", default=default_data_dir)
+    ap.add_argument("--models", default=default_models_dir)
+    ap.add_argument("--months", type=int, default=default_train_period)
     ap.add_argument("--dry-run", action="store_true")
     args = ap.parse_args()
 

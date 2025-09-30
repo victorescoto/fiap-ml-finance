@@ -1,7 +1,118 @@
+# Arquivos compactados
 *.zip
-.vscode
+*.tar.gz
+*.rar
+
+# IDE e editores
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Python
 *.pyc
+*.pyo
+*.pyd
 __pycache__/
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Ambientes virtuais
 .env
 .venv/
-*.egg-info
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Dados locais (não versionar datasets)
+data/
+*.parquet
+*.csv
+*.json.gz
+*.pickle
+
+# Modelos ML (arquivos grandes)
+models/
+*.pkl
+*.joblib
+*.h5
+*.pt
+*.pth
+*.onnx
+
+# Logs
+*.log
+logs/
+.logs/
+
+# Jupyter Notebooks
+.ipynb_checkpoints/
+*.ipynb
+
+# pytest
+.pytest_cache/
+.coverage
+htmlcov/
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# AWS e Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+.terraform.lock.hcl
+terraform.tfvars
+*.tfplan
+
+# Secrets e configurações sensíveis
+.secrets/
+*.key
+*.pem
+*.p12
+credentials.json
+config.json
+
+# Cache e temporários
+.cache/
+.tmp/
+tmp/
+*.tmp
+*.temp
+
+# MacOS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Windows
+*.lnk
+
+# Sistema
+*.pid
+*.lock
