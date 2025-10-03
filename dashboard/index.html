@@ -53,6 +53,29 @@
     </div>
   </header>
 
+  <!-- Educational Disclaimer -->
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+    <div class="bg-gradient-to-r from-amber-600/20 to-orange-600/20 border border-amber-500/30 rounded-lg p-4">
+      <div class="flex items-start space-x-3">
+        <div class="flex-shrink-0">
+          <i data-lucide="alert-triangle" class="w-5 h-5 text-amber-400 mt-0.5"></i>
+        </div>
+        <div class="flex-1">
+          <h3 class="text-sm font-semibold text-amber-200 mb-1">Aviso Educacional Importante</h3>
+          <p class="text-xs text-amber-100/90 leading-relaxed">
+            Este dashboard foi desenvolvido exclusivamente para <strong>fins educativos e acadêmicos</strong> como parte do curso da FIAP. 
+            As análises, predições e informações apresentadas <strong>NÃO constituem recomendações</strong> de compra, venda ou investimento em ações. 
+            Os dados são fornecidos apenas para demonstração de técnicas de Machine Learning. 
+            <strong>Consulte sempre um profissional qualificado</strong> antes de tomar decisões de investimento.
+          </p>
+        </div>
+        <button onclick="this.parentElement.parentElement.style.display='none'" class="flex-shrink-0 text-amber-400 hover:text-amber-300 transition-colors">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- Main Content -->
   <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
     <!-- Controls Section -->
@@ -70,8 +93,7 @@
           <i data-lucide="clock" class="w-5 h-5 text-green-400"></i>
           <label class="text-sm font-medium text-slate-300">Interval:</label>
           <select id="intervalSelect" class="bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-green-500 focus:border-transparent">
-            <option value="5m" selected>5 minutes</option>
-            <option value="1h">1 hour</option>
+            <option value="1h" selected>1 hour</option>
             <option value="1d">1 day</option>
           </select>
         </div>
@@ -171,6 +193,27 @@
       </div>
     </div>
   </main>
+
+  <!-- Footer Disclaimer -->
+  <footer class="bg-slate-800/30 border-t border-slate-700 mt-8">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div class="text-center">
+        <div class="flex items-center justify-center space-x-2 mb-2">
+          <i data-lucide="graduation-cap" class="w-4 h-4 text-slate-400"></i>
+          <span class="text-sm font-medium text-slate-300">FIAP - Projeto Educacional</span>
+        </div>
+        <p class="text-xs text-slate-500 max-w-2xl mx-auto">
+          Dashboard desenvolvido para fins acadêmicos. Não constitui aconselhamento financeiro. 
+          Predições de ML são apenas demonstrativas. Invista com responsabilidade.
+        </p>
+        <div class="flex items-center justify-center space-x-4 mt-3 text-xs text-slate-600">
+          <span>© 2025 FIAP Finance Analytics</span>
+          <span>•</span>
+          <span>Powered by AWS + Machine Learning</span>
+        </div>
+      </div>
+    </div>
+  </footer>
 
   <!-- Loading Overlay -->
   <div id="loadingOverlay" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 hidden">

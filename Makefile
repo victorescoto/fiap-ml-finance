@@ -16,7 +16,7 @@ API_PORT?=8000
 DATA_DIR?=./data
 MODELS_DIR?=./models
 
-.PHONY: deps run-api ingest-1d-local ingest-5m-local train-local tf-init tf-apply tf-destroy fmt
+.PHONY: deps run-api ingest-1d-local ingest-1h-local ingest-historical-local ingest-hourly-historical-local train-local tf-init tf-apply tf-destroy fmt
 
 deps:
 	uv sync
@@ -24,14 +24,48 @@ deps:
 run-api:
 	$(UVICORN) app.fastapi_app.main:app --reload --port $(API_PORT)
 
-ingest-1d-local:
-	$(PY) app/jobs/ingest_1d.py --out $(DATA_DIR) --dry-run
+# ==================== DATA INGESTION (OPTIMIZED) ====================
+# Inicialização histórica (2 anos) - executar apenas uma vez ou sob demanda
+ingest-historical-local:
+	@echo "🏗️ Downloading 2-year historical data (run once only)..."
+	$(PY) app/jobs/ingest_historical.py --out $(DATA_DIR)
 
-ingest-5m-local:
-	$(PY) app/jobs/ingest_5m.py --out $(DATA_DIR) --dry-run
+ingest-historical-s3:
+	@echo "🏗️ Downloading 2-year historical data and uploading to S3..."
+	$(PY) app/jobs/ingest_historical.py --out $(DATA_DIR) --to s3://$${S3_RAW_BUCKET}
+
+# Ingestão diária incremental (apenas últimos 2 dias) - mais eficiente
+ingest-1d-local:
+	@echo "🔄 Daily incremental update (2 days only)..."
+	$(PY) app/jobs/ingest_1d.py --out $(DATA_DIR)
+
+ingest-1d-s3:
+	@echo "🔄 Daily incremental update with S3 upload..."
+	$(PY) app/jobs/ingest_1d.py --out $(DATA_DIR) --to s3://$${S3_RAW_BUCKET}
+
+# Inicialização horária histórica (30 dias) - executar apenas uma vez ou sob demanda
+ingest-hourly-historical-local:
+	@echo "🏗️ Downloading 30-day historical hourly data (run once only)..."
+	$(PY) app/jobs/ingest_hourly_historical.py --out $(DATA_DIR)
+
+ingest-hourly-historical-s3:
+	@echo "🏗️ Downloading 30-day historical hourly data and uploading to S3..."
+	$(PY) app/jobs/ingest_hourly_historical.py --out $(DATA_DIR) --to s3://$${S3_RAW_BUCKET}
+
+# Ingestão horária incremental (apenas últimas 12 horas) - mais eficiente
+ingest-1h-local:
+	@echo "🔄 Hourly incremental update (12 hours only)..."
+	$(PY) app/jobs/ingest_1h.py --out $(DATA_DIR)
+
+ingest-1h-s3:
+	@echo "🔄 Hourly incremental update with S3 upload..."
+	$(PY) app/jobs/ingest_1h.py --out $(DATA_DIR) --to s3://$${S3_RAW_BUCKET}
 
 train-local:
-	$(PY) app/jobs/train_daily.py --data $(DATA_DIR) --models $(MODELS_DIR) --dry-run
+	$(PY) app/jobs/train_daily.py --data $(DATA_DIR) --models $(MODELS_DIR)
+
+train-s3:
+	$(PY) app/jobs/train_daily.py --data $(DATA_DIR) --models $(MODELS_DIR) --to-s3
 
 tf-init:
 	cd infra/terraform && terraform init
@@ -52,11 +86,11 @@ API_IMAGE=$(ECR_REGISTRY)/$(PREFIX)-api:latest
 JOB_IMAGE=$(ECR_REGISTRY)/$(PREFIX)-job:latest
 
 docker-build-api:
-	docker build -f Dockerfile.api -t $(PREFIX)-api .
+	DOCKER_BUILDKIT=0 docker build -f Dockerfile.api -t $(PREFIX)-api .
 	docker tag $(PREFIX)-api:latest $(API_IMAGE)
 
 docker-build-job:
-	docker build -f Dockerfile.job -t $(PREFIX)-job .
+	DOCKER_BUILDKIT=0 docker build -f Dockerfile.job -t $(PREFIX)-job .
 	docker tag $(PREFIX)-job:latest $(JOB_IMAGE)
 
 docker-build: docker-build-api docker-build-job

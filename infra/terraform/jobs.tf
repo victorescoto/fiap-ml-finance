@@ -3,7 +3,7 @@ resource "aws_lambda_function" "job" {
   role          = aws_iam_role.lambda_exec.arn
   package_type  = "Image"
   image_uri     = local.ecr_job
-  timeout       = 120
+  timeout       = 600
   memory_size   = 1024
   environment {
     variables = {
@@ -13,34 +13,37 @@ resource "aws_lambda_function" "job" {
       ML_TRAIN_PERIOD  = "12"
       DATA_DIR         = "/tmp/data"
       MODELS_DIR       = "/tmp/models"
+      # Note: Para inicialização histórica (2 anos), use:
+      # make run-historical-local ou invoke manualmente com JOB_NAME=ingest_historical
     }
   }
 }
 
 # Schedules
-resource "aws_cloudwatch_event_rule" "ingest_5m" {
-  name                = "${var.prefix}-ingest-5m"
-  schedule_expression = "rate(5 minutes)"
+resource "aws_cloudwatch_event_rule" "ingest_1h" {
+  name                = "${var.prefix}-ingest-1h"
+  schedule_expression = "rate(1 hour)"
 }
 
-resource "aws_cloudwatch_event_target" "ingest_5m" {
-  rule      = aws_cloudwatch_event_rule.ingest_5m.name
-  target_id = "lambda-job-ingest-5m"
+resource "aws_cloudwatch_event_target" "ingest_1h" {
+  rule      = aws_cloudwatch_event_rule.ingest_1h.name
+  target_id = "lambda-job-ingest-1h"
   arn       = aws_lambda_function.job.arn
-  input     = jsonencode({ JOB_NAME = "ingest_5m" })
+  input     = jsonencode({ JOB_NAME = "ingest_1h" })
 }
 
-resource "aws_lambda_permission" "allow_events_ingest5m" {
-  statement_id  = "AllowEventInvokeIngest5m"
+resource "aws_lambda_permission" "allow_events_ingest1h" {
+  statement_id  = "AllowEventInvokeIngest1h"
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.job.function_name
   principal     = "events.amazonaws.com"
-  source_arn    = aws_cloudwatch_event_rule.ingest_5m.arn
+  source_arn    = aws_cloudwatch_event_rule.ingest_1h.arn
 }
 
 resource "aws_cloudwatch_event_rule" "ingest_1d" {
   name                = "${var.prefix}-ingest-1d"
   schedule_expression = "cron(5 0 * * ? *)" # 00:05 UTC diariamente
+  description         = "Daily incremental ingestion (2 days only)"
 }
 
 resource "aws_cloudwatch_event_target" "ingest_1d" {

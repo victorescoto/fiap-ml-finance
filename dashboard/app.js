@@ -44,7 +44,7 @@ async function fetchSymbols() {
   }
 }
 
-async function fetchLatest(symbol, interval = "5m", limit = 120) {
+async function fetchLatest(symbol, interval = "1h", limit = 120) {
   try {
     const res = await fetch(`${API_BASE}/latest?symbol=${symbol}&interval=${interval}&limit=${limit}`);
     const data = await res.json();

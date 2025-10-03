@@ -42,7 +42,7 @@ def symbols():
 
 
 @app.get("/latest", response_model=LatestResponse)
-def latest(symbol: str, interval: str = "5m", limit: int = 120):
+def latest(symbol: str, interval: str = "1h", limit: int = 120):
     if symbol not in SYMBOLS:
         raise HTTPException(status_code=400, detail="symbol not allowed")
     try:
