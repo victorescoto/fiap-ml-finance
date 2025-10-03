@@ -1,26 +1,204 @@
 <!doctype html>
-<html>
+<html lang="pt-BR" class="h-full">
 
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Finance Demo - FIAP Fase 3</title>
-  <link rel="stylesheet" href="styles.css" />
+  <title>FIAP Finance Analytics - ML Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#0EA5E9',
+            secondary: '#1E293B',
+            accent: '#10B981',
+            danger: '#EF4444'
+          }
+        }
+      }
+    }
+  </script>
 </head>
 
-<body>
-  <div class="container">
-    <h1>Finance Demo — Up/Down D+1</h1>
-    <div class="controls">
-      <label for="symbol">Symbol:</label>
-      <select id="symbol"></select>
-      <button id="refresh">Refresh</button>
+<body class="h-full bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 text-white">
+  <!-- Header -->
+  <header class="bg-slate-800/50 backdrop-blur-sm border-b border-slate-700">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center space-x-3">
+          <div class="w-10 h-10 bg-gradient-to-r from-blue-500 to-cyan-400 rounded-lg flex items-center justify-center">
+            <i data-lucide="trending-up" class="w-6 h-6 text-white"></i>
+          </div>
+          <div>
+            <h1 class="text-2xl font-bold bg-gradient-to-r from-blue-400 to-cyan-300 bg-clip-text text-transparent">
+              FIAP Finance Analytics
+            </h1>
+            <p class="text-sm text-slate-400">Machine Learning Dashboard</p>
+          </div>
+        </div>
+        <div class="flex items-center space-x-4">
+          <div class="flex items-center space-x-2 text-sm text-slate-300">
+            <i data-lucide="activity" class="w-4 h-4"></i>
+            <span id="connectionStatus" class="text-green-400">Connected</span>
+          </div>
+          <div class="text-sm text-slate-400" id="lastUpdate">
+            Last updated: Loading...
+          </div>
+        </div>
+      </div>
     </div>
-    <div id="chart"></div>
-    <div id="prediction" class="prediction"></div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <!-- Controls Section -->
+    <div class="bg-slate-800/30 backdrop-blur-sm rounded-xl border border-slate-700 p-6 mb-8">
+      <div class="flex flex-wrap items-center gap-4">
+        <div class="flex items-center space-x-2">
+          <i data-lucide="trending-up" class="w-5 h-5 text-blue-400"></i>
+          <label class="text-sm font-medium text-slate-300">Stock Symbol:</label>
+          <select id="symbolSelect" class="bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+            <option>Loading symbols...</option>
+          </select>
+        </div>
+        
+        <div class="flex items-center space-x-2">
+          <i data-lucide="clock" class="w-5 h-5 text-green-400"></i>
+          <label class="text-sm font-medium text-slate-300">Interval:</label>
+          <select id="intervalSelect" class="bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-green-500 focus:border-transparent">
+            <option value="5m" selected>5 minutes</option>
+            <option value="1h">1 hour</option>
+            <option value="1d">1 day</option>
+          </select>
+        </div>
+        
+        <div class="flex space-x-3 ml-auto">
+          <button onclick="loadData()" class="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 px-6 py-2 rounded-lg font-medium transition-all duration-200 flex items-center space-x-2 shadow-lg">
+            <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+            <span>Load Data</span>
+          </button>
+          <button onclick="makePrediction()" class="bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 px-6 py-2 rounded-lg font-medium transition-all duration-200 flex items-center space-x-2 shadow-lg">
+            <i data-lucide="brain" class="w-4 h-4"></i>
+            <span>AI Predict</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div class="bg-slate-800/30 backdrop-blur-sm rounded-xl border border-slate-700 p-6">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm text-slate-400">Current Price</p>
+            <p id="currentPrice" class="text-2xl font-bold text-white">$--</p>
+          </div>
+          <div class="w-12 h-12 bg-blue-500/20 rounded-lg flex items-center justify-center">
+            <i data-lucide="dollar-sign" class="w-6 h-6 text-blue-400"></i>
+          </div>
+        </div>
+      </div>
+      
+      <div class="bg-slate-800/30 backdrop-blur-sm rounded-xl border border-slate-700 p-6">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm text-slate-400">Daily Change</p>
+            <p id="dailyChange" class="text-2xl font-bold text-white">-%</p>
+          </div>
+          <div class="w-12 h-12 bg-green-500/20 rounded-lg flex items-center justify-center">
+            <i data-lucide="trending-up" class="w-6 h-6" id="changeIcon"></i>
+          </div>
+        </div>
+      </div>
+      
+      <div class="bg-slate-800/30 backdrop-blur-sm rounded-xl border border-slate-700 p-6">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm text-slate-400">Volume</p>
+            <p id="volume" class="text-2xl font-bold text-white">--</p>
+          </div>
+          <div class="w-12 h-12 bg-purple-500/20 rounded-lg flex items-center justify-center">
+            <i data-lucide="bar-chart" class="w-6 h-6 text-purple-400"></i>
+          </div>
+        </div>
+      </div>
+      
+      <div class="bg-slate-800/30 backdrop-blur-sm rounded-xl border border-slate-700 p-6">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm text-slate-400">AI Confidence</p>
+            <p id="confidence" class="text-2xl font-bold text-white">--%</p>
+          </div>
+          <div class="w-12 h-12 bg-orange-500/20 rounded-lg flex items-center justify-center">
+            <i data-lucide="brain" class="w-6 h-6 text-orange-400"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Chart Section -->
+    <div class="bg-slate-800/30 backdrop-blur-sm rounded-xl border border-slate-700 p-6 mb-8">
+      <div class="flex items-center justify-between mb-6">
+        <h2 class="text-xl font-semibold text-white flex items-center space-x-2">
+          <i data-lucide="line-chart" class="w-5 h-5 text-blue-400"></i>
+          <span>Price Chart</span>
+        </h2>
+        <div class="flex items-center space-x-2">
+          <div class="w-2 h-2 bg-blue-400 rounded-full"></div>
+          <span class="text-sm text-slate-400">Recent Data</span>
+        </div>
+      </div>
+      <div id="chart" class="w-full h-96 bg-slate-900/50 rounded-lg"></div>
+    </div>
+
+    <!-- Prediction Section -->
+    <div class="bg-slate-800/30 backdrop-blur-sm rounded-xl border border-slate-700 p-6">
+      <h2 class="text-xl font-semibold text-white flex items-center space-x-2 mb-6">
+        <i data-lucide="zap" class="w-5 h-5 text-yellow-400"></i>
+        <span>AI Predictions</span>
+      </h2>
+      <div id="prediction" class="text-slate-300">
+        <div class="flex items-center justify-center py-8">
+          <div class="text-center">
+            <i data-lucide="brain" class="w-12 h-12 text-slate-500 mx-auto mb-3"></i>
+            <p class="text-slate-400">Click "AI Predict" to get machine learning predictions</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Loading Overlay -->
+  <div id="loadingOverlay" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 hidden">
+    <div class="bg-slate-800 rounded-xl p-8 flex items-center space-x-4">
+      <div class="animate-spin w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full"></div>
+      <span class="text-white font-medium">Processing...</span>
+    </div>
   </div>
+
+  <!-- Configuration - load before main app -->
+  <script src="config.js"></script>
   <script src="app.js"></script>
+  <script>
+    // Initialize Lucide icons
+    lucide.createIcons();
+    
+    // Update last update time
+    function updateLastUpdateTime() {
+      document.getElementById('lastUpdate').textContent = 
+        'Last updated: ' + new Date().toLocaleTimeString();
+    }
+    
+    // Initialize
+    document.addEventListener('DOMContentLoaded', function() {
+      updateLastUpdateTime();
+      setInterval(updateLastUpdateTime, 60000); // Update every minute
+    });
+  </script>
 </body>
 
 </html>

@@ -128,5 +128,47 @@ def main():
                 s3.upload_file(str(file), bucket, key)
 
 
+def lambda_handler(event, context):
+    """Handler para AWS Lambda"""
+    # Configurar argumentos para o Lambda
+    class Args:
+        symbols = os.getenv("SYMBOLS", "AAPL,MSFT,AMZN,GOOGL,META,NVDA,TSLA")
+        out = "/tmp/data"  # Diretório temporário no Lambda
+        to = f"s3://{os.getenv('S3_RAW_BUCKET', 'fiap-fase3-raw')}"
+        dry_run = False
+    
+    # Executar lógica principal
+    base_path = pathlib.Path(Args.out) / "prices_1d"
+    base_path.mkdir(parents=True, exist_ok=True)
+
+    symbols = [s.strip() for s in Args.symbols.split(",") if s.strip()]
+    written_paths = []
+    for sym in symbols:
+        df = fetch_daily(sym)
+        if df.empty:
+            continue
+        out = write_parquet_partitioned(df, base_path, "1d", sym)
+        written_paths.append(out)
+
+    # Upload para S3
+    if Args.to.startswith("s3://"):
+        s3 = boto3.client("s3")
+        bucket = Args.to.replace("s3://", "").split("/")[0]
+        prefix = "/".join(Args.to.replace("s3://", "").split("/")[1:])
+        for p in written_paths:
+            for file in p.rglob("*.parquet"):
+                key = "/".join([prefix, "prices_1d", str(file.relative_to(base_path))])
+                s3.upload_file(str(file), bucket, key)
+    
+    return {
+        "statusCode": 200,
+        "body": {
+            "message": "Daily data ingestion completed successfully",
+            "symbols": symbols,
+            "files_uploaded": len([f for p in written_paths for f in p.rglob("*.parquet")])
+        }
+    }
+
+
 if __name__ == "__main__":
     main()

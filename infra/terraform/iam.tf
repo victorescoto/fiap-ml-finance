@@ -4,9 +4,9 @@ resource "aws_iam_role" "lambda_exec" {
   assume_role_policy = jsonencode({
     Version = "2012-10-17",
     Statement = [{
-      Effect = "Allow",
+      Effect    = "Allow",
       Principal = { Service = "lambda.amazonaws.com" },
-      Action = "sts:AssumeRole"
+      Action    = "sts:AssumeRole"
     }]
   })
 }
@@ -18,12 +18,12 @@ resource "aws_iam_role_policy_attachment" "lambda_basic" {
 
 # S3 read/write for raw/models
 resource "aws_iam_policy" "lambda_s3_rw" {
-  name   = "${var.prefix}-lambda-s3-rw"
+  name = "${var.prefix}-lambda-s3-rw"
   policy = jsonencode({
     Version = "2012-10-17",
     Statement = [{
       Effect = "Allow",
-      Action = ["s3:GetObject","s3:PutObject","s3:ListBucket"],
+      Action = ["s3:GetObject", "s3:PutObject", "s3:ListBucket"],
       Resource = [
         "arn:aws:s3:::fiap-fase3-finance-raw",
         "arn:aws:s3:::fiap-fase3-finance-raw/*",

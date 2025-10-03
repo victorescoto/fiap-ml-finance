@@ -2,6 +2,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from .schemas import SymbolsResponse, LatestResponse, Candle, PredictResponse
 import yfinance as yf
+import pandas as pd
 from datetime import datetime
 from typing import List
 import os
@@ -55,14 +56,29 @@ def latest(symbol: str, interval: str = "5m", limit: int = 120):
         )
         if df.empty:
             raise ValueError("Empty dataframe")
-        if "Datetime" in df.columns:
-            df = df.rename_axis("Datetime").reset_index()
-        else:
-            df = df.reset_index()
+        # Handle multi-index columns (yfinance sometimes returns multi-level columns)
+        if isinstance(df.columns, pd.MultiIndex):
+            # Flatten multi-index columns, keeping only the first level (OHLCV names)
+            df.columns = [col[0] if col[1] == symbol else col[0] for col in df.columns]
+        
+        df = df.reset_index()
         df = df.tail(limit)
+        
+        # Determine the timestamp column name
+        timestamp_col = None
+        for col in df.columns:
+            col_str = str(col).lower()
+            if 'datetime' in col_str or 'date' in col_str or col_str == 'timestamp':
+                timestamp_col = col
+                break
+        
+        if timestamp_col is None:
+            # Use the first column as timestamp
+            timestamp_col = df.columns[0]
+        
         candles = [
             Candle(
-                timestamp=row["Datetime"].isoformat(),
+                timestamp=pd.to_datetime(row[timestamp_col]).isoformat(),
                 open=float(row["Open"]),
                 high=float(row["High"]),
                 low=float(row["Low"]),
@@ -120,6 +136,11 @@ def predict(symbol: str):
         raise HTTPException(
             status_code=500, detail="failed to fetch daily data for inference"
         )
+    
+    # CORREÇÃO: Lidar com MultiIndex do yfinance
+    if isinstance(df.columns, pd.MultiIndex):
+        df.columns = df.columns.get_level_values(0)
+    
     df = df.reset_index().rename(
         columns={
             "Date": "timestamp",
@@ -139,3 +160,12 @@ def predict(symbol: str):
     signal = "buy" if prob_up >= 0.6 else ("sell" if prob_up <= 0.4 else "hold")
     ts = datetime.utcnow().isoformat() + "Z"
     return PredictResponse(symbol=symbol, prob_up=prob_up, signal=signal, asof=ts)
+
+
+# Lambda handler para AWS Lambda
+try:
+    from mangum import Mangum
+    lambda_handler = Mangum(app)
+except ImportError:
+    # Para desenvolvimento local
+    lambda_handler = None

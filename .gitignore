@@ -34,7 +34,7 @@ wheels/
 *.egg
 MANIFEST
 
-# Ambientes virtuais
+# Ambientes virtuais e configurações
 .env
 .venv/
 env/
@@ -42,6 +42,9 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+
+# Configurações específicas de ambiente (dashboard)
+dashboard/config.js
 
 # Dados locais (não versionar datasets)
 data/

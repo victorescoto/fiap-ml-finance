@@ -1,7 +1,21 @@
-FROM public.ecr.aws/lambda/python:3.12
+# Dockerfile.job - Jobs de ML para AWS Lambda
+FROM public.ecr.aws/lambda/python:3.11
 
-RUN yum -y install tar gzip && yum clean all
-COPY . ${LAMBDA_TASK_ROOT}
-RUN pip install --no-cache-dir -r requirements.txt
+# Instalar dependências do sistema para pandas/numpy
+RUN yum update -y && yum install -y gcc gcc-c++ make && yum clean all
 
-CMD [ "app.lambda_job_handler.handler" ]
+# Instalar uv para gerenciamento de pacotes
+RUN pip install uv
+
+# Copiar arquivos de configuração
+COPY pyproject.toml ${LAMBDA_TASK_ROOT}/
+COPY README.md ${LAMBDA_TASK_ROOT}/
+
+# Copiar código da aplicação
+COPY app/ ${LAMBDA_TASK_ROOT}/app/
+
+# Instalar dependências usando uv
+RUN cd ${LAMBDA_TASK_ROOT} && uv pip install --system --no-cache-dir -e .
+
+# Definir handler padrão (será sobrescrito nos deployments específicos)
+CMD ["app.jobs.ingest_1d.lambda_handler"]

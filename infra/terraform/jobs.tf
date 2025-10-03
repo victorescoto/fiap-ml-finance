@@ -7,8 +7,12 @@ resource "aws_lambda_function" "job" {
   memory_size   = 1024
   environment {
     variables = {
-      MODELS_BUCKET = "fiap-fase3-finance-models"
-      SYMBOLS       = "AAPL,MSFT,AMZN,GOOGL,META,NVDA,TSLA"
+      S3_RAW_BUCKET    = aws_s3_bucket.raw.bucket
+      S3_MODELS_BUCKET = aws_s3_bucket.models.bucket
+      SYMBOLS          = "AAPL,MSFT,AMZN,GOOGL,META,NVDA,TSLA"
+      ML_TRAIN_PERIOD  = "12"
+      DATA_DIR         = "/tmp/data"
+      MODELS_DIR       = "/tmp/models"
     }
   }
 }

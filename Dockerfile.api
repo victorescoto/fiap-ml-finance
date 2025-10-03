@@ -1,7 +1,24 @@
-FROM public.ecr.aws/lambda/python:3.12
+# Dockerfile.api - FastAPI + Mangum para AWS Lambda
+FROM public.ecr.aws/lambda/python:3.11
 
-RUN yum -y install tar gzip && yum clean all
-COPY . ${LAMBDA_TASK_ROOT}
-RUN pip install --no-cache-dir -r requirements.txt
+# Instalar dependências do sistema para compilação
+RUN yum update -y && yum install -y gcc gcc-c++ make && yum clean all
 
-CMD [ "app.lambda_api_handler.handler" ]
+# Instalar uv para gerenciamento de pacotes (mais rápido que pip)
+RUN pip install uv
+
+# Copiar arquivos de configuração
+COPY pyproject.toml ${LAMBDA_TASK_ROOT}/
+COPY README.md ${LAMBDA_TASK_ROOT}/
+
+# Copiar código da aplicação
+COPY app/ ${LAMBDA_TASK_ROOT}/app/
+
+# Instalar dependências usando uv (muito mais rápido para cold starts)
+RUN cd ${LAMBDA_TASK_ROOT} && uv pip install --system --no-cache-dir -e .
+
+# Adicionar Mangum para compatibilidade com Lambda
+RUN cd ${LAMBDA_TASK_ROOT} && uv pip install --system --no-cache-dir mangum
+
+# Definir handler para Lambda
+CMD ["app.fastapi_app.main.lambda_handler"]

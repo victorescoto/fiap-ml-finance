@@ -1,28 +1,58 @@
-# FIAP Fase 3 — ML Finance (Serverless, Low-Cost)
+# FIAP Fase 3 — ML Finance (Serverless, Production-Ready)
 
-Sistema de análise financeira e predição de ações usando Machine Learning com arquitetura serverless na AWS.
+[![🚀 Status](https://img.shields.io/badge/Status-Production-success)](https://github.com/victorescoto/fiap-ml-finance)
+[![⚡ Serverless](https://img.shields.io/badge/AWS-Serverless-orange)](https://aws.amazon.com/lambda/)
+[![🤖 ML Pipeline](https://img.shields.io/badge/ML-Automated-blue)](https://scikit-learn.org/)
+[![🔒 Security](https://img.shields.io/badge/Security-Audited-green)](./SECURITY.md)
+
+Sistema completo de análise financeira e predição de ações usando Machine Learning com arquitetura serverless na AWS. Sistema está em **produção** com jobs automatizados e pipeline ML totalmente funcional.
 
 ## 📈 Sobre o Projeto
 
 Este projeto implementa uma solução completa de análise financeira que:
-- **Coleta dados** de ações em tempo real via Yahoo Finance
-- **Processa e armazena** dados em Data Lake (S3)
-- **Treina modelos ML** para predição de movimento de preços (Up/Down D+1)
-- **Expõe API REST** para consultas e predições
-- **Fornece dashboard** interativo para visualização
+- 🔄 **Coleta dados automaticamente** via jobs agendados (EventBridge)
+- 📊 **Processa e armazena** dados em Data Lake (S3) com particionamento otimizado
+- 🤖 **Treina modelos ML** diariamente para predição de movimento de preços (Up/Down D+1)
+- 🚀 **API REST serverless** hospedada em AWS Lambda com FastAPI
+- 📱 **Dashboard moderno** com Tailwind CSS e Plotly.js
+- 🔒 **Segurança implementada** com configuração protegida e auditoria completa
+- ⚡ **CDN global** via CloudFront para alta performance
 
 **Símbolos analisados:** AAPL, MSFT, AMZN, GOOGL, META, NVDA, TSLA
 
-## 🏗️ Arquitetura
+## 🚀 Status do Sistema
 
-- **Backend:** FastAPI + Python
-- **ML:** scikit-learn (LogisticRegression para classificação Up/Down)
-- **Data Lake:** AWS S3 (Parquet particionado)
-- **Consultas:** AWS Athena + Glue Data Catalog
-- **API:** FastAPI com CORS habilitado
-- **Frontend:** Dashboard HTML/JavaScript com Plotly
-- **Deploy:** AWS Lambda via Mangum (serverless)
-- **IaC:** Terraform
+✅ **PRODUÇÃO ATIVA**
+- API: Lambda + API Gateway funcionando
+- Dashboard: Hospedado em S3 + CloudFront
+- Jobs automatizados: EventBridge executando diariamente
+- Modelos ML: Treinados e atualizados automaticamente
+- Segurança: Auditoria completa realizada
+
+## 🏗️ Arquitetura Serverless
+
+### Backend & API
+- **FastAPI + Mangum:** API REST rodando em AWS Lambda
+- **API Gateway:** Exposição pública da API com CORS
+- **Docker:** Containerização para deployment em Lambda
+
+### Data & ML Pipeline
+- **EventBridge:** Jobs agendados para ingestão e treinamento
+  - 📅 Ingestão diária: 00:05 UTC
+  - 🧠 Treinamento ML: 00:30 UTC
+- **S3 Data Lake:** Armazenamento Parquet particionado
+- **scikit-learn:** LogisticRegression para classificação Up/Down
+- **Athena + Glue:** Consultas SQL nos dados
+
+### Frontend & CDN
+- **S3 Static Hosting:** Dashboard HTML/JS/CSS
+- **CloudFront:** CDN global para alta performance
+- **Tailwind CSS:** Framework CSS moderno
+- **Plotly.js:** Gráficos interativos avançados
+
+### Infraestrutura como Código
+- **Terraform:** 35+ recursos AWS automatizados
+- **Make + Shell Scripts:** Automação de deploy
 
 ## 📁 Estrutura do Projeto
 
@@ -42,12 +72,17 @@ Este projeto implementa uma solução completa de análise financeira que:
 ├── dashboard/                # Frontend
 │   ├── index.html           # Dashboard principal
 │   ├── app.js               # Lógica JavaScript
-│   └── styles.css           # Estilos
+│   ├── styles.css           # Estilos (Tailwind CSS)
+│   ├── config.js            # Configuração (protegido)
+│   └── config.example.js    # Template de configuração
 ├── infra/terraform/         # Infraestrutura como código
 │   ├── main.tf              # Recursos AWS principais
 │   ├── providers.tf         # Providers Terraform
 │   └── variables.tf         # Variáveis
+├── deploy-dashboard.sh      # Script avançado de deploy
+├── Dockerfile.api           # Container para Lambda
 ├── Makefile                 # Scripts de automação
+├── SECURITY.md              # Documentação de segurança
 └── pyproject.toml          # Configuração Python moderna
 ```
 
@@ -55,9 +90,12 @@ Este projeto implementa uma solução completa de análise financeira que:
 
 ### Pré-requisitos
 
-- **Python 3.8+** 
+- **Python 3.11+** 
 - **uv** (gerenciador de pacotes Python rápido)
-- **AWS CLI** configurado (opcional, para deploy)
+- **Docker** (para builds de produção)
+- **AWS CLI** configurado com credenciais válidas
+- **Terraform** (para infraestrutura)
+- **Make** (para automação)
 
 ### Instalação do uv
 
@@ -69,7 +107,7 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 pip install uv
 ```
 
-### Setup do Projeto
+### Setup Local (Desenvolvimento)
 
 ```bash
 # 1. Clone o repositório
@@ -79,7 +117,11 @@ cd fiap-fase3-ml-finance
 # 2. Instale dependências (usa uv + pyproject.toml)
 make deps
 
-# 3. Execute a API localmente
+# 3. Configure dashboard (copie e edite)
+cp dashboard/config.example.js dashboard/config.js
+# Edite dashboard/config.js conforme necessário
+
+# 4. Execute a API localmente
 make run-api
 ```
 
@@ -87,8 +129,26 @@ A API estará disponível em: **http://127.0.0.1:8000**
 - Documentação interativa: **http://127.0.0.1:8000/docs**
 - OpenAPI Schema: **http://127.0.0.1:8000/openapi.json**
 
+### Setup Produção (AWS)
+
+```bash
+# 1. Configurar infraestrutura
+make tf-init
+make tf-apply
+
+# 2. Deploy da API
+make deploy
+
+# 3. Deploy do dashboard
+make dashboard-deploy
+
+# 4. Verificar funcionamento
+make dashboard-status
+```
+
 ## 📋 Comandos Principais
 
+### 🏗️ Desenvolvimento
 | Comando | Descrição |
 |---------|-----------|
 | `make deps` | Instala dependências usando uv |
@@ -96,10 +156,39 @@ A API estará disponível em: **http://127.0.0.1:8000**
 | `make ingest-1d-local` | Coleta dados diários (armazena em ./data) |
 | `make ingest-5m-local` | Coleta dados 5min (armazena em ./data) |
 | `make train-local` | Treina modelo ML (salva em ./models) |
+
+### 🚀 Deploy & Infraestrutura
+| Comando | Descrição |
+|---------|-----------|
 | `make tf-init` | Inicializa Terraform |
 | `make tf-apply` | Aplica infraestrutura AWS |
 | `make tf-destroy` | Remove infraestrutura AWS |
+| `make deploy` | Deploy completo (Terraform + Docker) |
 | `make fmt` | Formata código Terraform |
+
+### 📊 Dashboard Deploy
+| Comando | Descrição |
+|---------|-----------|
+| `make dashboard-deploy` | Deploy completo do dashboard |
+| `make dashboard-deploy-js` | Deploy apenas JavaScript/CSS |
+| `make dashboard-deploy-html` | Deploy apenas HTML |
+| `make dashboard-status` | Verificar status do dashboard |
+| `./deploy-dashboard.sh [comando]` | Script avançado de deploy |
+
+#### Script de Deploy Avançado
+```bash
+# Deploy completo
+./deploy-dashboard.sh full
+
+# Deploy apenas JavaScript (mais rápido para mudanças de código)
+./deploy-dashboard.sh js
+
+# Deploy apenas HTML (mudanças de layout)
+./deploy-dashboard.sh html
+
+# Verificar status
+./deploy-dashboard.sh status
+```
 
 ## 🔌 Endpoints da API
 
@@ -143,52 +232,107 @@ O sistema implementa um **classificador binário** que prediz se o preço de uma
 **Modelo:** LogisticRegression (scikit-learn)
 **Output:** Probabilidade de alta + sinal (buy/sell/hold)
 
-## 📊 Dashboard
+## 📊 Dashboard Moderno
 
-O dashboard fornece visualizações interativas:
-- **Gráficos de candlestick** com dados em tempo real
-- **Indicadores técnicos** (RSI, Bollinger Bands)
-- **Predições ML** com probabilidades
-- **Comparação entre símbolos**
+O dashboard fornece visualizações interativas avançadas:
+- 📊 **Gráficos Plotly.js** com candlestick em tempo real
+- 📈 **Indicadores técnicos** (RSI, Bollinger Bands) interativos
+- 🤖 **Predições ML** com probabilidades e sinais
+- ⚡ **Auto-loading** quando símbolos são alterados
+- 🎨 **Design responsivo** com Tailwind CSS
+- 🔄 **Atualização automática** de dados
 
-Acesse o dashboard abrindo `dashboard/index.html` no navegador (certifique-se que a API esteja rodando).
+### URLs de Acesso:
+- **Desenvolvimento:** `dashboard/index.html` (API local necessária)
+- **Produção:** Via CloudFront (URL mostrada após deploy)
+
+### Configuração do Dashboard:
+```javascript
+// dashboard/config.js (não commitado)
+window.API_BASE = 'https://sua-api.execute-api.us-east-2.amazonaws.com/prod';
+window.ENV = 'production';
+window.DEBUG = false;
+```
 
 ## ☁️ Deploy AWS
 
-### Infraestrutura Base
+### Infraestrutura Completa (35+ Recursos)
+
 ```bash
 # Inicializa Terraform
 make tf-init
 
-# Provisiona recursos AWS (S3, Glue, Athena)
+# Provisiona TODA infraestrutura AWS
 make tf-apply
 ```
 
-**Recursos criados:**
-- S3 buckets (raw data, processed data, models)
-- Glue Data Catalog
-- Athena Workgroup
-- IAM roles e policies
+**Principais recursos criados:**
+- 📦 **S3 Buckets:** raw data, processed data, models, dashboard
+- 🔍 **Glue Data Catalog:** schema management e particionamento
+- 🔎 **Athena Workgroup:** consultas SQL otimizadas
+- 🚀 **Lambda Functions:** API + jobs de processamento
+- 🌐 **API Gateway:** endpoints REST públicos
+- 📨 **EventBridge:** jobs agendados (ingestão + ML)
+- 🗂️ **ECR Repositories:** imagens Docker
+- 🌍 **CloudFront:** CDN global para dashboard
+- 🔐 **IAM:** roles e policies de segurança
 
-### Variáveis de Ambiente
+### Jobs Automatizados
+- **Ingestão diária:** Todos os dias às 00:05 UTC
+- **Treinamento ML:** Todos os dias às 00:30 UTC
+- **Logs:** CloudWatch para monitoramento
 
-Configurar no arquivo `.env` ou variáveis de ambiente:
+### Configuração de Segurança
+
+⚠️ **IMPORTANTE:** Leia `SECURITY.md` antes do deploy em produção.
+
+**Variáveis de ambiente** (arquivo `.env`):
 ```bash
-AWS_REGION=us-east-1
+AWS_REGION=us-east-2
 PREFIX=fiap-fase3
 SYMBOLS=AAPL,MSFT,AMZN,GOOGL,META,NVDA,TSLA
 ```
+
+**Configuração do Dashboard** (`dashboard/config.js`):
+```javascript
+window.API_BASE = 'https://sua-api-url.amazonaws.com/prod';
+window.ENV = 'production';
+window.DEBUG = false;
+```
+
+**Arquivos protegidos pelo .gitignore:**
+- `dashboard/config.js` (configuração específica do ambiente)
+- `.env` (variáveis sensíveis)
+- Credenciais AWS (use AWS CLI ou IAM roles)
 
 ## 🔧 Desenvolvimento
 
 ### Tecnologias Utilizadas
 
-- **Python**: FastAPI, scikit-learn, pandas, yfinance
-- **Frontend**: HTML5, JavaScript ES6, Plotly.js
-- **ML**: LogisticRegression, feature engineering
-- **AWS**: S3, Lambda, Athena, Glue, CloudFront
-- **IaC**: Terraform
-- **Package Manager**: uv (moderno e rápido)
+**Backend & API:**
+- **Python 3.11**: Runtime otimizado para Lambda
+- **FastAPI + Mangum**: API REST serverless
+- **scikit-learn**: ML models (LogisticRegression)
+- **pandas + yfinance**: Processamento de dados financeiros
+
+**Frontend:**
+- **HTML5 + JavaScript ES6**: Base moderna
+- **Tailwind CSS**: Framework CSS utility-first
+- **Plotly.js**: Gráficos interativos avançados
+- **Lucide Icons**: Ícones SVG modernos
+
+**AWS Infrastructure:**
+- **Lambda + API Gateway**: API serverless
+- **S3 + CloudFront**: Hosting + CDN global
+- **EventBridge**: Jobs agendados
+- **Athena + Glue**: Data lake queries
+- **ECR**: Container registry
+
+**DevOps:**
+- **Terraform**: Infrastructure as Code
+- **Docker**: Containerização para Lambda
+- **Make + Shell**: Automação de deploy
+- **uv**: Package manager rápido
 
 ### Estrutura de Dados
 
@@ -196,18 +340,73 @@ SYMBOLS=AAPL,MSFT,AMZN,GOOGL,META,NVDA,TSLA
 **Particionamento:** Por símbolo e data
 **Schema:** OHLCV + timestamp + features derivadas
 
-## 📈 Próximos Passos
+## � Segurança
 
-1. **Serverless Total**: Migrar jobs para AWS Lambda
-2. **CI/CD**: GitHub Actions para deploy automatizado  
-3. **Monitoramento**: CloudWatch + alertas
-4. **Cache**: Redis para predições frequentes
-5. **ML Avançado**: Modelos LSTM para séries temporais
-6. **Real-time**: Streaming com Kinesis Data Streams
+✅ **Auditoria de segurança completa realizada**
 
-## 📄 Licença
+- 📄 **Documentação:** Ver `SECURITY.md` para guia completo
+- 🔒 **Configuração protegida:** Arquivos sensíveis não commitados
+- 🛡️ **Best practices:** IAM roles, CORS, HTTPS obrigatório
+- 📋 **Checklist:** Validação de segurança implementada
 
-Este projeto é parte do curso de Pós-graduação FIAP - Fase 3.
+## 📈 Roadmap Futuro
+
+1. ✅ **Serverless Total**: Jobs em Lambda (CONCLUÍDO)
+2. ✅ **Pipeline automatizado**: EventBridge (CONCLUÍDO)
+3. **CI/CD**: GitHub Actions para deploy automatizado  
+4. **Monitoramento**: CloudWatch alerts + dashboards
+5. **Cache**: ElastiCache para predições frequentes
+6. **ML Avançado**: Modelos LSTM para séries temporais
+7. **Real-time**: WebSocket + Kinesis Data Streams
+
+## 🆘 Troubleshooting
+
+**Problemas comuns:**
+
+1. **API não responde**: Verificar se Lambda está deployed
+   ```bash
+   make deploy
+   ```
+
+2. **Dashboard em branco**: Configurar `dashboard/config.js`
+   ```bash
+   cp dashboard/config.example.js dashboard/config.js
+   # Editar com URLs corretas
+   ```
+
+3. **Erro de CORS**: API Gateway configurado automaticamente
+
+4. **Jobs não executam**: Verificar EventBridge rules no AWS Console
+
+5. **Modelos não carregam**: Verificar se treinamento foi executado
+   ```bash
+   # Verificar logs no CloudWatch
+   ```
+
+## � Monitoramento
+
+**Como acompanhar o sistema:**
+
+1. **AWS CloudWatch**: Logs e métricas dos Lambda functions
+2. **API Health**: `GET /health` endpoint sempre disponível  
+3. **EventBridge**: Verificar execução dos jobs agendados
+4. **S3**: Conferir dados sendo atualizados diariamente
+
+## 📞 Suporte
+
+- 📖 **Documentação completa**: Este README + `SECURITY.md`
+- 🛠️ **Scripts de deploy**: `Makefile` + `deploy-dashboard.sh`
+- 🔍 **Logs**: AWS CloudWatch para troubleshooting
+- 📧 **Contato**: Projeto acadêmico FIAP Fase 3
+
+## �📄 Licença
+
+Este projeto é parte do curso de **Pós-graduação FIAP - Fase 3**.
+
+**Tecnologias principais:**
+- Python 3.11 + FastAPI + scikit-learn
+- AWS Lambda + S3 + CloudFront
+- Terraform + Docker + EventBridge
 
 ---
-🚀 **Desenvolvido com uv + FastAPI + AWS**
+🚀 **Sistema em produção - Pipeline ML automatizado - Arquitetura serverless**

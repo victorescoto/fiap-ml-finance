@@ -1,9 +1,9 @@
 locals {
-  raw_bucket     = "${var.prefix}-finance-raw"
-  models_bucket  = "${var.prefix}-finance-models"
-  site_bucket    = "${var.prefix}-finance-site"
-  athena_bucket  = "${var.prefix}-athena-output"
-  glue_db_name   = "fiap_fase3_finance"
+  raw_bucket    = "${var.prefix}-finance-raw"
+  models_bucket = "${var.prefix}-finance-models"
+  site_bucket   = "${var.prefix}-finance-site"
+  athena_bucket = "${var.prefix}-athena-output"
+  glue_db_name  = "fiap_fase3_finance"
 }
 
 resource "aws_s3_bucket" "raw" {
@@ -26,9 +26,17 @@ resource "aws_s3_bucket_versioning" "models" {
 
 resource "aws_s3_bucket" "site" {
   bucket = local.site_bucket
-  website {
-    index_document = "index.html"
-    error_document = "index.html"
+}
+
+resource "aws_s3_bucket_website_configuration" "site" {
+  bucket = aws_s3_bucket.site.id
+
+  index_document {
+    suffix = "index.html"
+  }
+
+  error_document {
+    key = "index.html"
   }
 }
 
@@ -53,10 +61,10 @@ resource "aws_athena_workgroup" "wg" {
 
 output "buckets" {
   value = {
-    raw     = aws_s3_bucket.raw.bucket
-    models  = aws_s3_bucket.models.bucket
-    site    = aws_s3_bucket.site.bucket
-    athena  = aws_s3_bucket.athena.bucket
+    raw    = aws_s3_bucket.raw.bucket
+    models = aws_s3_bucket.models.bucket
+    site   = aws_s3_bucket.site.bucket
+    athena = aws_s3_bucket.athena.bucket
   }
 }
 
