@@ -17,5 +17,5 @@ COPY app/ ${LAMBDA_TASK_ROOT}/app/
 # Instalar dependências usando uv
 RUN cd ${LAMBDA_TASK_ROOT} && uv pip install --system --no-cache-dir -e .
 
-# Definir handler padrão (será sobrescrito nos deployments específicos)
-CMD ["app.jobs.ingest_1d.lambda_handler"]
+# Definir handler genérico que roteia baseado no JOB_NAME do evento
+CMD ["app.lambda_job_handler.handler"]
