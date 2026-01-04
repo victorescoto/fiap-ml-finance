@@ -16,11 +16,15 @@ dependencies = [
     "pandas",
     "numpy>=1.26.0,<2.0",
     "scikit-learn>=1.0.0,<1.6",
-    "pyarrow>=12.0.0,<18.0",
     "boto3",
     "python-dateutil",
     "plotly",
-    "python-dotenv"
+    "python-dotenv",
+    "pyarrow>=12.0.0,<18.0",
+    "tensorflow>=2.13.0,<2.16.0",
+    "joblib",
+    "matplotlib",
+    "seaborn",
 ]
 
 [tool.setuptools.packages.find]

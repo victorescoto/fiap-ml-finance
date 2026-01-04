@@ -1,0 +1,42 @@
+# FIAP Tech Challenge - Fase 4: Dockerfile para API LSTM
+FROM python:3.11-slim
+
+# Definir diretório de trabalho
+WORKDIR /app
+
+# Variáveis de ambiente para Python
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+# Instalar dependências do sistema
+RUN apt-get update && apt-get install -y \
+    curl \
+    gcc \
+    g++ \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copiar arquivos de configuração
+COPY pyproject.toml ./
+COPY README.md ./
+
+# Instalar uv para gerenciamento de pacotes
+RUN pip install uv
+
+# Instalar dependências do Python
+RUN uv venv && \
+    uv pip install -e .
+
+# Copiar código da aplicação
+COPY app/ ./app/
+COPY dashboard/ ./dashboard/
+
+# Criar diretório para modelos
+RUN mkdir -p models
+
+# Expor porta da API
+EXPOSE 8000
+
+# Comando de inicialização
+CMD ["uv", "run", "uvicorn", "app.fastapi_app.main:app", "--host", "0.0.0.0", "--port", "8000"]

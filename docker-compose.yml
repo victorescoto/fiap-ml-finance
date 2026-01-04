@@ -1,0 +1,65 @@
+# FIAP Tech Challenge - Fase 4
+# Docker Compose para API LSTM de Predição de Ações
+
+services:
+  # API LSTM
+  lstm-api:
+    build:
+      context: .
+      dockerfile: Dockerfile.lstm-api
+    container_name: fiap-lstm-api
+    ports:
+      - "8000:8000"
+    environment:
+      - PYTHONPATH=/app
+      - TF_CPP_MIN_LOG_LEVEL=2
+    volumes:
+      - ./models:/app/models
+      - ./logs:/app/logs
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Dashboard (Frontend)
+  dashboard:
+    image: nginx:alpine
+    container_name: fiap-dashboard
+    ports:
+      - "3000:80"
+    volumes:
+      - ./dashboard:/usr/share/nginx/html:ro
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - lstm-api
+    restart: unless-stopped
+
+  # Jupyter Notebook para análises
+  notebook:
+    build:
+      context: .
+      dockerfile: Dockerfile.lstm-api
+    container_name: fiap-notebook
+    ports:
+      - "8888:8888"
+    environment:
+      - JUPYTER_ENABLE_LAB=yes
+    volumes:
+      - ./notebooks:/app/notebooks
+      - ./models:/app/models
+      - ./data:/app/data
+    command: >
+      sh -c "uv pip install jupyter jupyterlab &&
+             uv run jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --allow-root --NotebookApp.token=''"
+    restart: unless-stopped
+
+volumes:
+  models:
+    driver: local
+  data:
+    driver: local
+  logs:
+    driver: local
