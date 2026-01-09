@@ -7,11 +7,91 @@ let currentData = null
 let currentPredictions = null
 
 // Utility functions
-function showLoading(show = true) {
+function showLoading(show = true, options = {}) {
   const overlay = document.getElementById('loadingOverlay')
   if (overlay) {
     overlay.classList.toggle('hidden', !show)
+    
+    if (show && options.title) {
+      document.getElementById('loadingTitle').textContent = options.title
+      document.getElementById('loadingSubtitle').textContent = options.subtitle || 'This may take a few moments'
+      
+      // Mostrar barra de progresso se solicitado
+      if (options.showProgress) {
+        document.getElementById('progressContainer').classList.remove('hidden')
+        document.getElementById('progressLabel').textContent = options.progressLabel || 'Training Progress'
+      }
+    } else {
+      // Reset ao esconder
+      document.getElementById('progressContainer').classList.add('hidden')
+      resetProgress()
+    }
   }
+}
+
+let progressInterval = null
+let progressStartTime = null
+
+function startProgress(estimatedDuration = 180000) { // 3 minutos padrão
+  progressStartTime = Date.now()
+  let progress = 0
+  
+  clearInterval(progressInterval)
+  
+  progressInterval = setInterval(() => {
+    const elapsed = Date.now() - progressStartTime
+    const elapsedSeconds = Math.round(elapsed / 1000)
+    
+    // Calcular progresso baseado no tempo (não linear para parecer mais realista)
+    if (elapsed < estimatedDuration * 0.1) {
+      progress = (elapsed / (estimatedDuration * 0.1)) * 10 // 10% nos primeiros 10% do tempo
+    } else if (elapsed < estimatedDuration * 0.8) {
+      progress = 10 + ((elapsed - estimatedDuration * 0.1) / (estimatedDuration * 0.7)) * 70 // 70% nos próximos 70% do tempo
+    } else if (elapsed < estimatedDuration) {
+      progress = 80 + ((elapsed - estimatedDuration * 0.8) / (estimatedDuration * 0.2)) * 15 // 15% nos últimos 20% do tempo
+    } else {
+      progress = Math.min(95, 95 + ((elapsed - estimatedDuration) / estimatedDuration) * 5) // Máximo 95% se passar do tempo
+    }
+    
+    updateProgress(progress, elapsedSeconds, estimatedDuration)
+  }, 1000)
+}
+
+function updateProgress(percent, elapsedSeconds, estimatedDuration) {
+  const progressBar = document.getElementById('progressBar')
+  const progressPercent = document.getElementById('progressPercent')
+  const timeElapsed = document.getElementById('timeElapsed')
+  const timeEstimated = document.getElementById('timeEstimated')
+  
+  if (progressBar) {
+    progressBar.style.width = `${Math.min(percent, 100)}%`
+  }
+  
+  if (progressPercent) {
+    progressPercent.textContent = `${Math.round(percent)}%`
+  }
+  
+  if (timeElapsed) {
+    timeElapsed.textContent = `${elapsedSeconds}s`
+  }
+  
+  if (timeEstimated) {
+    const estimatedSeconds = Math.round(estimatedDuration / 1000)
+    const remainingSeconds = Math.max(0, estimatedSeconds - elapsedSeconds)
+    timeEstimated.textContent = remainingSeconds > 0 ? `~${remainingSeconds}s remaining` : 'Finishing...'
+  }
+}
+
+function completeProgress() {
+  updateProgress(100, 0, 0)
+  setTimeout(() => {
+    clearInterval(progressInterval)
+  }, 1000)
+}
+
+function resetProgress() {
+  clearInterval(progressInterval)
+  updateProgress(0, 0, 0)
 }
 
 function showNotification(message, type = 'info') {
@@ -120,7 +200,11 @@ async function fetchHistoricalData(symbol, period = '6mo') {
 
 async function predictPrices(symbol, days = 3) {
   try {
-    showLoading(true)
+    showLoading(true, {
+      title: `📈 Generating LSTM Predictions for ${symbol}`,
+      subtitle: `Predicting ${days} days ahead using trained model...`
+    })
+    
     const res = await fetch(`${API_BASE}/predict`, {
       method: 'POST',
       headers: {
@@ -145,9 +229,19 @@ async function predictPrices(symbol, days = 3) {
 
 async function trainModel(symbol) {
   try {
-    showLoading(true)
+    // Mostrar loading com barra de progresso
+    showLoading(true, {
+      title: `🧠 Training LSTM Model for ${symbol}`,
+      subtitle: 'Deep learning training in progress... This may take 2-5 minutes',
+      showProgress: true,
+      progressLabel: 'LSTM Training Progress'
+    })
+    
+    // Iniciar barra de progresso (estimativa de 3 minutos)
+    startProgress(180000)
+    
     showNotification(
-      `🧠 Treinando modelo LSTM para ${symbol}... Isso pode levar 2-5 minutos. Por favor aguarde!`,
+      `🧠 Treinando modelo LSTM para ${symbol}... Acompanhe o progresso na tela!`,
       'training'
     )
 
@@ -169,7 +263,13 @@ async function trainModel(symbol) {
     const duration = Math.round((endTime - startTime) / 1000)
 
     const data = await res.json()
-    showLoading(false)
+    
+    // Completar progresso
+    completeProgress()
+    
+    setTimeout(() => {
+      showLoading(false)
+    }, 1500) // Dar tempo para ver 100%
 
     if (data.status === 'success') {
       showNotification(
@@ -198,6 +298,10 @@ async function trainModel(symbol) {
         ? 'Timeout - treinamento ainda pode estar em progresso'
         : 'Erro de conexão'
     showNotification(`❌ ${errorMsg}`, 'error')
+    showLoading(false)
+    return null
+  }
+}
     showLoading(false)
     return null
   }

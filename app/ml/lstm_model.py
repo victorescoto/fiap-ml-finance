@@ -112,9 +112,9 @@ class LSTMStockPredictor:
 
         return X_train, y_train, X_test, y_test
 
-    def build_model(self, units=[50, 50], dropout=0.2):
+    def build_model(self, units=[32, 16], dropout=0.2):
         """
-        Constrói o modelo LSTM
+        Constrói o modelo LSTM (otimizado para velocidade)
 
         Args:
             units (list): Lista com número de neurônios para cada camada LSTM
@@ -123,11 +123,11 @@ class LSTMStockPredictor:
         Returns:
             tensorflow.keras.Model: Modelo LSTM compilado
         """
-        print("🏗️ Construindo modelo LSTM...")
+        print("🏗️ Construindo modelo LSTM (otimizado)...")
 
         model = Sequential()
 
-        # Primeira camada LSTM
+        # Primeira camada LSTM (menor para velocidade)
         model.add(LSTM(units=units[0],
                        return_sequences=len(units) > 1,
                        input_shape=(self.sequence_length, 1)))
@@ -142,41 +142,41 @@ class LSTMStockPredictor:
         # Camada de saída
         model.add(Dense(1))
 
-        # Compilar modelo
-        model.compile(optimizer=Adam(learning_rate=0.001),
+        # Compilar modelo com learning rate maior para convergência rápida
+        model.compile(optimizer=Adam(learning_rate=0.01),
                       loss='mean_squared_error',
                       metrics=['mae'])
 
-        print("✅ Modelo LSTM construído com sucesso!")
+        print("✅ Modelo LSTM otimizado construído com sucesso!")
         print(f"   - Camadas LSTM: {units}")
         print(f"   - Dropout: {dropout}")
-        print(f"   - Otimizador: Adam")
+        print(f"   - Otimizador: Adam (lr=0.01)")
 
         return model
 
     def train_model(self, X_train, y_train, X_test, y_test,
-                    epochs=100, batch_size=32, validation_split=0.1):
+                    epochs=20, batch_size=16, validation_split=0.1):
         """
-        Treina o modelo LSTM
+        Treina o modelo LSTM (otimizado para velocidade)
 
         Args:
             X_train, y_train: Dados de treinamento
             X_test, y_test: Dados de teste
-            epochs (int): Número de épocas
-            batch_size (int): Tamanho do batch
+            epochs (int): Número de épocas (reduzido)
+            batch_size (int): Tamanho do batch (menor para velocidade)
             validation_split (float): Proporção para validação
 
         Returns:
             tensorflow.keras.callbacks.History: Histórico do treinamento
         """
-        print("🚀 Iniciando treinamento do modelo...")
+        print("🚀 Iniciando treinamento rápido do modelo...")
 
-        # Callbacks para otimização do treinamento
+        # Callbacks para otimização do treinamento (mais agressivos)
         callbacks = [
-            EarlyStopping(monitor='val_loss', patience=15,
+            EarlyStopping(monitor='val_loss', patience=5,
                           restore_best_weights=True),
             ReduceLROnPlateau(monitor='val_loss', factor=0.5,
-                              patience=10, min_lr=0.0001)
+                              patience=3, min_lr=0.001)
         ]
 
         # Treinar modelo
