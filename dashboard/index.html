@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="pt-BR" class="h-full">
+
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -62,13 +63,15 @@
         <div class="flex-1">
           <h3 class="text-sm font-semibold text-amber-200 mb-1">🎓 FIAP Tech Challenge - Aviso Educacional</h3>
           <p class="text-xs text-amber-100/90 leading-relaxed">
-            Este sistema de <strong>predição LSTM</strong> foi desenvolvido exclusivamente para <strong>fins educativos</strong> como parte do Tech Challenge da Fase 4 da FIAP. 
-            As predições de Deep Learning apresentadas <strong>NÃO constituem recomendações</strong> de investimento. 
+            Este sistema de <strong>predição LSTM</strong> foi desenvolvido exclusivamente para <strong>fins
+              educativos</strong> como parte do Tech Challenge da Fase 4 da FIAP.
+            As predições de Deep Learning apresentadas <strong>NÃO constituem recomendações</strong> de investimento.
             Os modelos LSTM são demonstrativos de técnicas de Machine Learning aplicadas a séries temporais financeiras.
             <strong>Consulte sempre um profissional qualificado</strong> antes de tomar decisões de investimento.
           </p>
         </div>
-        <button onclick="this.parentElement.parentElement.style.display='none'" class="flex-shrink-0 text-amber-400 hover:text-amber-300 transition-colors">
+        <button onclick="this.parentElement.parentElement.style.display='none'"
+          class="flex-shrink-0 text-amber-400 hover:text-amber-300 transition-colors">
           <i data-lucide="x" class="w-4 h-4"></i>
         </button>
       </div>
@@ -83,15 +86,17 @@
         <div class="flex items-center space-x-2">
           <i data-lucide="trending-up" class="w-5 h-5 text-blue-400"></i>
           <label class="text-sm font-medium text-slate-300">Stock Symbol:</label>
-          <select id="symbolSelect" class="bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+          <select id="symbolSelect"
+            class="bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent">
             <option>Loading symbols...</option>
           </select>
         </div>
-        
+
         <div class="flex items-center space-x-2">
           <i data-lucide="calendar" class="w-5 h-5 text-green-400"></i>
           <label class="text-sm font-medium text-slate-300">Prediction Days:</label>
-          <select id="daysSelect" class="bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-green-500 focus:border-transparent">
+          <select id="daysSelect"
+            class="bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-green-500 focus:border-transparent">
             <option value="1">1 day</option>
             <option value="3" selected>3 days</option>
             <option value="5">5 days</option>
@@ -100,11 +105,12 @@
             <option value="30">1 month</option>
           </select>
         </div>
-        
+
         <div class="flex items-center space-x-2">
           <i data-lucide="clock" class="w-5 h-5 text-purple-400"></i>
           <label class="text-sm font-medium text-slate-300">Historical Period:</label>
-          <select id="periodSelect" class="bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+          <select id="periodSelect"
+            class="bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent">
             <option value="1mo">1 Month</option>
             <option value="3mo">3 Months</option>
             <option value="6mo" selected>6 Months</option>
@@ -112,19 +118,22 @@
             <option value="2y">2 Years</option>
           </select>
         </div>
-        
+
         <div class="flex space-x-3">
-          <button id="predictBtn" class="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center space-x-2">
+          <button id="predictBtn"
+            class="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center space-x-2">
             <i data-lucide="brain" class="w-4 h-4"></i>
             <span>Predict with LSTM</span>
           </button>
-          
-          <button id="trainBtn" class="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center space-x-2">
+
+          <button id="trainBtn"
+            class="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center space-x-2">
             <i data-lucide="zap" class="w-4 h-4"></i>
             <span>Train Model</span>
           </button>
-          
-          <button id="refreshBtn" class="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center space-x-2">
+
+          <button id="refreshBtn"
+            class="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center space-x-2">
             <i data-lucide="refresh-cw" class="w-4 h-4"></i>
             <span>Refresh</span>
           </button>
@@ -253,7 +262,7 @@
           <span class="text-sm font-medium text-slate-300">FIAP Tech Challenge - Fase 4</span>
         </div>
         <p class="text-xs text-slate-500 max-w-2xl mx-auto">
-          Sistema de predição LSTM desenvolvido para fins acadêmicos. Não constitui aconselhamento financeiro. 
+          Sistema de predição LSTM desenvolvido para fins acadêmicos. Não constitui aconselhamento financeiro.
           Predições de Deep Learning são apenas demonstrativas. Invista com responsabilidade.
         </p>
         <div class="flex items-center justify-center space-x-4 mt-3 text-xs text-slate-600">
@@ -266,7 +275,8 @@
   </footer>
 
   <!-- Loading Overlay -->
-  <div id="loadingOverlay" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 hidden">
+  <div id="loadingOverlay"
+    class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 hidden">
     <div class="bg-slate-800 rounded-xl p-8 flex items-center space-x-4">
       <div class="animate-spin w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full"></div>
       <div class="text-white">
@@ -284,4 +294,5 @@
     lucide.createIcons();
   </script>
 </body>
+
 </html>

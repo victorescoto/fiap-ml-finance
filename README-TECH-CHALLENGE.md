@@ -5,6 +5,7 @@
 Sistema completo de Machine Learning para predição de preços de ações utilizando redes neurais LSTM (Long Short Term Memory), desenvolvido como solução para o Tech Challenge da Fase 4 da FIAP.
 
 ### 🎯 **Objetivo**
+
 Desenvolver um modelo de Deep Learning capaz de predizer preços futuros de ações utilizando dados históricos, implementando uma solução completa com API RESTful, interface web e deployment em containers.
 
 ---
@@ -12,6 +13,7 @@ Desenvolver um modelo de Deep Learning capaz de predizer preços futuros de aç�
 ## 🏗️ **Arquitetura da Solução**
 
 ### **1. 🧠 Modelo LSTM**
+
 - **Framework**: TensorFlow/Keras
 - **Tipo**: Deep Learning - LSTM (Long Short Term Memory)
 - **Características**:
@@ -22,6 +24,7 @@ Desenvolver um modelo de Deep Learning capaz de predizer preços futuros de aç�
   - Métricas de avaliação: MAE, RMSE, MAPE
 
 ### **2. 🌐 API RESTful**
+
 - **Framework**: FastAPI
 - **Funcionalidades**:
   - Predições em tempo real
@@ -31,12 +34,14 @@ Desenvolver um modelo de Deep Learning capaz de predizer preços futuros de aç�
   - Documentação interativa (Swagger)
 
 ### **3. 🎨 Interface Web**
+
 - Dashboard responsivo em HTML/CSS/JavaScript
 - Visualizações interativas com Plotly.js
 - Interface intuitiva para predições
 - Gráficos de performance dos modelos
 
 ### **4. 🐳 Containerização**
+
 - Docker Compose para orquestração
 - Containers separados para API, Dashboard e Jupyter
 - Volumes persistentes para modelos
@@ -47,6 +52,7 @@ Desenvolver um modelo de Deep Learning capaz de predizer preços futuros de aç�
 ## 🚀 **Como Executar**
 
 ### **Pré-requisitos**
+
 - Docker e Docker Compose
 - Python 3.11+ (para desenvolvimento local)
 - 8GB RAM recomendado
@@ -88,22 +94,27 @@ uv run uvicorn app.fastapi_app.main:app --reload
 ## 📊 **Endpoints da API**
 
 ### **🏥 Health Check**
+
 ```http
 GET /health
 ```
 
 ### **📋 Símbolos Suportados**
+
 ```http
 GET /symbols
 ```
+
 **Ações disponíveis**: AAPL, MSFT, AMZN, GOOGL, META, NVDA, TSLA, DIS
 
 ### **📈 Dados Históricos**
+
 ```http
 GET /historical/{symbol}?period=1y&interval=1d
 ```
 
 ### **🔮 Predição de Preços**
+
 ```http
 POST /predict
 {
@@ -114,6 +125,7 @@ POST /predict
 ```
 
 ### **🧠 Treinamento de Modelo**
+
 ```http
 POST /train
 {
@@ -124,6 +136,7 @@ POST /train
 ```
 
 ### **📊 Status dos Modelos**
+
 ```http
 GET /models
 ```
@@ -134,24 +147,26 @@ GET /models
 
 Após executar o deploy:
 
-| Serviço | URL | Descrição |
-|---------|-----|-----------|
-| **API LSTM** | http://localhost:8000 | API principal |
-| **Documentação** | http://localhost:8000/docs | Swagger UI |
-| **Dashboard** | http://localhost:3000 | Interface web |
-| **Jupyter Lab** | http://localhost:8888 | Notebooks de análise |
+| Serviço          | URL                        | Descrição            |
+| ---------------- | -------------------------- | -------------------- |
+| **API LSTM**     | http://localhost:8000      | API principal        |
+| **Documentação** | http://localhost:8000/docs | Swagger UI           |
+| **Dashboard**    | http://localhost:3000      | Interface web        |
+| **Jupyter Lab**  | http://localhost:8888      | Notebooks de análise |
 
 ---
 
 ## 🧪 **Testando a API**
 
 ### **Script Automático**
+
 ```bash
 # Executa bateria completa de testes
 python test_api.py
 ```
 
 ### **Teste Manual com cURL**
+
 ```bash
 # Health check
 curl http://localhost:8000/health
@@ -174,10 +189,11 @@ curl -X POST "http://localhost:8000/train" \
 O sistema avalia os modelos com as seguintes métricas:
 
 - **MAE** (Mean Absolute Error): Erro absoluto médio
-- **RMSE** (Root Mean Square Error): Raiz do erro quadrático médio  
+- **RMSE** (Root Mean Square Error): Raiz do erro quadrático médio
 - **MAPE** (Mean Absolute Percentage Error): Erro percentual absoluto médio
 
 ### **Níveis de Confiança**
+
 - **muito_alto** (MAPE ≤ 5%): Predição muito confiável
 - **alto** (5% < MAPE ≤ 10%): Predição confiável
 - **médio** (10% < MAPE ≤ 15%): Predição moderada
@@ -233,6 +249,7 @@ docker exec -it fiap-lstm-api bash
 ## 📚 **Tecnologias Utilizadas**
 
 ### **Backend**
+
 - **Python 3.11**: Linguagem principal
 - **TensorFlow 2.15**: Framework de Deep Learning
 - **FastAPI**: Framework web moderno e rápido
@@ -241,12 +258,14 @@ docker exec -it fiap-lstm-api bash
 - **Scikit-learn**: Preprocessamento e métricas
 
 ### **Frontend**
+
 - **HTML5/CSS3**: Estrutura e estilo
 - **JavaScript ES6+**: Lógica do frontend
 - **Plotly.js**: Visualizações interativas
 - **Bootstrap**: Design responsivo
 
 ### **DevOps**
+
 - **Docker**: Containerização
 - **Docker Compose**: Orquestração
 - **Nginx**: Proxy reverso
@@ -257,17 +276,21 @@ docker exec -it fiap-lstm-api bash
 ## 🎓 **Considerações Acadêmicas**
 
 ### **Modelo LSTM**
+
 O LSTM foi escolhido por ser ideal para séries temporais financeiras, capturando:
+
 - **Dependências de longo prazo**: Padrões que se estendem por semanas/meses
 - **Memória seletiva**: Lembrança de informações relevantes
 - **Não-linearidade**: Captura relações complexas nos preços
 
 ### **Avaliação do Modelo**
+
 - **Validação temporal**: Split cronológico dos dados
 - **Multiple step prediction**: Predições para múltiplos dias
 - **Métricas robustas**: MAE, RMSE e MAPE para avaliação completa
 
 ### **Deployment**
+
 - **Containerização**: Garante reprodutibilidade
 - **API RESTful**: Interface padronizada e documentada
 - **Monitoramento**: Health checks e métricas de performance
@@ -280,13 +303,14 @@ O LSTM foi escolhido por ser ideal para séries temporais financeiras, capturand
 ✅ **API RESTful**: FastAPI com documentação Swagger  
 ✅ **Scripts/Containers**: Docker Compose para deploy  
 ✅ **Link para API**: http://localhost:8000 (após deploy)  
-✅ **Vídeo demonstração**: [Link para vídeo]  
+✅ **Vídeo demonstração**: [Link para vídeo]
 
 ---
 
 ## 🤝 **Equipe**
 
 **FIAP - Tech Challenge Fase 4**
+
 - Sistema desenvolvido para demonstração de conhecimentos em Deep Learning
 - Foco em aplicação prática de LSTM para séries temporais financeiras
 - Implementação completa de pipeline MLOps

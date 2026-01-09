@@ -71,7 +71,8 @@ app.add_middleware(
 )
 
 # Configurações
-SUPPORTED_SYMBOLS = ['AAPL', 'MSFT', 'AMZN', 'GOOGL', 'META', 'NVDA', 'TSLA', 'DIS']
+SUPPORTED_SYMBOLS = ['AAPL', 'MSFT', 'AMZN',
+                     'GOOGL', 'META', 'NVDA', 'TSLA', 'DIS']
 MODELS_DIR = 'models'
 os.makedirs(MODELS_DIR, exist_ok=True)
 
@@ -81,6 +82,7 @@ model_stats = {}
 
 # ==================== SCHEMAS ====================
 
+
 class HealthResponse(BaseModel):
     """Resposta do health check"""
     status: str
@@ -88,11 +90,13 @@ class HealthResponse(BaseModel):
     timestamp: str
     version: str
 
+
 class SymbolsResponse(BaseModel):
     """Resposta com símbolos suportados"""
     symbols: List[str]
     count: int
     supported_operations: List[str]
+
 
 class HistoricalData(BaseModel):
     """Dados históricos de uma ação"""
@@ -101,11 +105,15 @@ class HistoricalData(BaseModel):
     data: List[Dict[str, Union[str, float]]]
     count: int
 
+
 class PredictionRequest(BaseModel):
     """Requisição para predição"""
     symbol: str = Field(..., description="Símbolo da ação (ex: AAPL)")
-    days: int = Field(1, ge=1, le=30, description="Número de dias para predizer")
-    confidence_interval: bool = Field(False, description="Incluir intervalo de confiança")
+    days: int = Field(
+        1, ge=1, le=30, description="Número de dias para predizer")
+    confidence_interval: bool = Field(
+        False, description="Incluir intervalo de confiança")
+
 
 class PredictionResponse(BaseModel):
     """Resposta da predição"""
@@ -117,12 +125,16 @@ class PredictionResponse(BaseModel):
     prediction_date: str
     model_info: Dict[str, Union[str, float]]
 
+
 class TrainingRequest(BaseModel):
     """Requisição para treinamento de modelo"""
     symbol: str = Field(..., description="Símbolo da ação")
-    start_date: str = Field("2018-01-01", description="Data de início para coleta")
+    start_date: str = Field(
+        "2018-01-01", description="Data de início para coleta")
     end_date: Optional[str] = Field(None, description="Data final (opcional)")
-    retrain: bool = Field(False, description="Forçar retreinamento se modelo existe")
+    retrain: bool = Field(
+        False, description="Forçar retreinamento se modelo existe")
+
 
 class TrainingResponse(BaseModel):
     """Resposta do treinamento"""
@@ -132,6 +144,7 @@ class TrainingResponse(BaseModel):
     metrics: Optional[Dict[str, float]]
     training_time: Optional[float]
     data_points: Optional[int]
+
 
 class ModelStatus(BaseModel):
     """Status de um modelo"""
@@ -143,71 +156,78 @@ class ModelStatus(BaseModel):
 
 # ==================== UTILITÁRIOS ====================
 
+
 def get_model_key(symbol: str) -> str:
     """Gera chave única para o modelo"""
     return f"lstm_{symbol.lower()}"
 
+
 async def load_model_async(symbol: str) -> Optional[LSTMStockPredictor]:
     """Carrega modelo de forma assíncrona"""
     model_key = get_model_key(symbol)
-    
+
     if model_key in loaded_models:
         return loaded_models[model_key]
-    
+
     try:
         predictor = LSTMStockPredictor(symbol=symbol)
-        success = predictor.load_model(model_path=MODELS_DIR, model_name=model_key)
-        
+        success = predictor.load_model(
+            model_path=MODELS_DIR, model_name=model_key)
+
         if success:
             loaded_models[model_key] = predictor
-            
+
             # Carregar estatísticas do modelo se existir
-            config_file = os.path.join(MODELS_DIR, f"{model_key}_config.joblib")
+            config_file = os.path.join(
+                MODELS_DIR, f"{model_key}_config.joblib")
             if os.path.exists(config_file):
                 try:
                     config = joblib.load(config_file)
                     model_stats[symbol] = config
-                    print(f"✅ Estatísticas carregadas para {symbol}: {config.get('metrics', {})}")
+                    print(
+                        f"✅ Estatísticas carregadas para {symbol}: {config.get('metrics', {})}")
                 except Exception as e:
                     print(f"⚠️  Erro ao carregar config para {symbol}: {e}")
                     # Se não conseguir carregar o config, criar métricas básicas
                     model_stats[symbol] = {
                         'metrics': {
                             'MAE': 6.44,
-                            'RMSE': 8.06, 
+                            'RMSE': 8.06,
                             'MAPE': 2.61
                         },
                         'data_shape': [753, 1],
                         'created_at': datetime.now().isoformat()
                     }
             else:
-                print(f"⚠️  Config não encontrado para {symbol}, criando métricas padrão")
+                print(
+                    f"⚠️  Config não encontrado para {symbol}, criando métricas padrão")
                 # Criar métricas padrão se o arquivo de config não existir
                 model_stats[symbol] = {
                     'metrics': {
                         'MAE': 6.44,
-                        'RMSE': 8.06, 
+                        'RMSE': 8.06,
                         'MAPE': 2.61
                     },
                     'data_shape': [753, 1],
                     'created_at': datetime.now().isoformat()
                 }
-            
+
             return predictor
         else:
             return None
-            
+
     except Exception as e:
         print(f"Erro ao carregar modelo para {symbol}: {e}")
         return None
+
 
 def calculate_confidence(metrics: Dict[str, float]) -> str:
     """Calcula nível de confiança baseado nas métricas"""
     if not metrics:
         return "unknown"
-    
+
     mape = metrics.get('MAPE', float('inf'))
-    
+
     if mape <= 5:
         return "very_high"
     elif mape <= 10:
@@ -221,6 +241,7 @@ def calculate_confidence(metrics: Dict[str, float]) -> str:
 
 # ==================== ENDPOINTS ====================
 
+
 @app.get("/", response_model=HealthResponse)
 async def root():
     """Endpoint raiz com informações da API"""
@@ -230,6 +251,7 @@ async def root():
         timestamp=datetime.now().isoformat(),
         version="2.0.0"
     )
+
 
 @app.get("/health", response_model=HealthResponse)
 async def health_check():
@@ -241,6 +263,7 @@ async def health_check():
         version="2.0.0"
     )
 
+
 @app.get("/symbols", response_model=SymbolsResponse)
 async def get_symbols():
     """Retorna símbolos suportados pela API"""
@@ -250,6 +273,7 @@ async def get_symbols():
         supported_operations=["prediction", "training", "historical_data"]
     )
 
+
 @app.get("/historical/{symbol}", response_model=HistoricalData)
 async def get_historical_data(
     symbol: str,
@@ -258,23 +282,25 @@ async def get_historical_data(
 ):
     """
     Obtém dados históricos de uma ação
-    
+
     - **symbol**: Símbolo da ação (ex: AAPL)
     - **period**: Período (1d, 5d, 1mo, 3mo, 6mo, 1y, 2y, 5y, 10y, ytd, max)
     - **interval**: Intervalo (1m, 2m, 5m, 15m, 30m, 60m, 90m, 1h, 1d, 5d, 1wk, 1mo, 3mo)
     """
     symbol = symbol.upper()
-    
+
     if symbol not in SUPPORTED_SYMBOLS:
-        raise HTTPException(status_code=400, detail=f"Símbolo {symbol} não suportado")
-    
+        raise HTTPException(
+            status_code=400, detail=f"Símbolo {symbol} não suportado")
+
     try:
         ticker = yf.Ticker(symbol)
         data = ticker.history(period=period, interval=interval)
-        
+
         if data.empty:
-            raise HTTPException(status_code=404, detail=f"Dados não encontrados para {symbol}")
-        
+            raise HTTPException(
+                status_code=404, detail=f"Dados não encontrados para {symbol}")
+
         # Converter para formato JSON
         data_list = []
         for index, row in data.iterrows():
@@ -286,61 +312,66 @@ async def get_historical_data(
                 "close": round(float(row['Close']), 2),
                 "volume": int(row['Volume'])
             })
-        
+
         return HistoricalData(
             symbol=symbol,
             period=period,
             data=data_list,
             count=len(data_list)
         )
-        
+
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Erro ao obter dados: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Erro ao obter dados: {str(e)}")
+
 
 @app.post("/predict", response_model=PredictionResponse)
 async def predict_price(request: PredictionRequest):
     """
     Prediz preços futuros usando modelo LSTM
-    
+
     Utiliza modelo LSTM treinado para predizer preços futuros da ação especificada.
     Se o modelo não existir, será treinado automaticamente.
     """
     symbol = request.symbol.upper()
-    
+
     if symbol not in SUPPORTED_SYMBOLS:
-        raise HTTPException(status_code=400, detail=f"Símbolo {symbol} não suportado")
-    
+        raise HTTPException(
+            status_code=400, detail=f"Símbolo {symbol} não suportado")
+
     try:
         # Carregar ou treinar modelo
         predictor = await load_model_async(symbol)
-        
+
         if predictor is None:
             # Modelo não existe, treinar automaticamente
-            print(f"🔄 Modelo não encontrado para {symbol}, treinando automaticamente...")
+            print(
+                f"🔄 Modelo não encontrado para {symbol}, treinando automaticamente...")
             predictor = LSTMStockPredictor(symbol=symbol)
             results = predictor.full_pipeline(start_date='2020-01-01')
-            
+
             # Adicionar ao cache
             model_key = get_model_key(symbol)
             loaded_models[model_key] = predictor
             model_stats[symbol] = results
-        
+
         # Obter dados recentes para predição
         ticker = yf.Ticker(symbol)
         recent_data = ticker.history(period="1y")['Close']
-        
+
         if recent_data.empty:
-            raise HTTPException(status_code=404, detail=f"Dados recentes não encontrados para {symbol}")
-        
+            raise HTTPException(
+                status_code=404, detail=f"Dados recentes não encontrados para {symbol}")
+
         current_price = float(recent_data.iloc[-1])
-        
+
         # Fazer predições
         predictions = []
         last_prices = recent_data.values
-        
+
         for i in range(request.days):
             predicted_price = predictor.predict_next_price(last_prices)
-            
+
             pred_date = datetime.now() + timedelta(days=i+1)
             predictions.append({
                 "date": pred_date.strftime("%Y-%m-%d"),
@@ -348,14 +379,14 @@ async def predict_price(request: PredictionRequest):
                 "change": round(float(predicted_price - current_price), 2),
                 "change_percent": round(((predicted_price - current_price) / current_price) * 100, 2)
             })
-            
+
             # Atualizar para próxima predição
             last_prices = np.append(last_prices[1:], predicted_price)
-        
+
         # Obter métricas do modelo
         stats = model_stats.get(symbol, {})
         metrics = stats.get('metrics', {})
-        
+
         return PredictionResponse(
             symbol=symbol,
             current_price=round(current_price, 2),
@@ -369,24 +400,27 @@ async def predict_price(request: PredictionRequest):
                 "training_data": stats.get('data_shape', [0, 0])[0] if 'data_shape' in stats else 0
             }
         )
-        
+
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Erro na predição: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Erro na predição: {str(e)}")
+
 
 @app.post("/train", response_model=TrainingResponse)
 async def train_model(request: TrainingRequest, background_tasks: BackgroundTasks):
     """
     Treina um novo modelo LSTM para o símbolo especificado
-    
+
     O treinamento pode levar alguns minutos dependendo da quantidade de dados.
     """
     symbol = request.symbol.upper()
-    
+
     if symbol not in SUPPORTED_SYMBOLS:
-        raise HTTPException(status_code=400, detail=f"Símbolo {symbol} não suportado")
-    
+        raise HTTPException(
+            status_code=400, detail=f"Símbolo {symbol} não suportado")
+
     model_key = get_model_key(symbol)
-    
+
     # Verificar se modelo já existe
     model_path = os.path.join(MODELS_DIR, f"{model_key}.keras")
     if os.path.exists(model_path) and not request.retrain:
@@ -398,23 +432,23 @@ async def train_model(request: TrainingRequest, background_tasks: BackgroundTask
             training_time=None,
             data_points=None
         )
-    
+
     try:
         start_time = datetime.now()
-        
+
         # Criar e treinar modelo
         predictor = LSTMStockPredictor(symbol=symbol)
         results = predictor.full_pipeline(
             start_date=request.start_date,
         )
-        
+
         end_time = datetime.now()
         training_time = (end_time - start_time).total_seconds()
-        
+
         # Atualizar cache
         loaded_models[model_key] = predictor
         model_stats[symbol] = results
-        
+
         return TrainingResponse(
             symbol=symbol,
             status="success",
@@ -423,7 +457,7 @@ async def train_model(request: TrainingRequest, background_tasks: BackgroundTask
             training_time=round(training_time, 2),
             data_points=results['data_shape'][0] if 'data_shape' in results else 0
         )
-        
+
     except Exception as e:
         return TrainingResponse(
             symbol=symbol,
@@ -434,37 +468,40 @@ async def train_model(request: TrainingRequest, background_tasks: BackgroundTask
             data_points=None
         )
 
+
 @app.get("/models", response_model=List[ModelStatus])
 async def get_model_status():
     """
     Retorna status de todos os modelos disponíveis
     """
     status_list = []
-    
+
     for symbol in SUPPORTED_SYMBOLS:
         model_key = get_model_key(symbol)
         model_path = os.path.join(MODELS_DIR, f"{model_key}.keras")
-        
+
         exists = os.path.exists(model_path)
         last_trained = None
         metrics = None
         data_points = None
-        
+
         if exists:
             try:
-                config_file = os.path.join(MODELS_DIR, f"{model_key}_config.joblib")
+                config_file = os.path.join(
+                    MODELS_DIR, f"{model_key}_config.joblib")
                 if os.path.exists(config_file):
                     config = joblib.load(config_file)
                     last_trained = config.get('created_at')
-                
+
                 if symbol in model_stats:
                     stats = model_stats[symbol]
                     metrics = stats.get('metrics')
-                    data_points = stats.get('data_shape', [0, 0])[0] if 'data_shape' in stats else 0
-                    
+                    data_points = stats.get('data_shape', [0, 0])[
+                        0] if 'data_shape' in stats else 0
+
             except Exception as e:
                 print(f"Erro ao ler config do modelo {symbol}: {e}")
-        
+
         status_list.append(ModelStatus(
             symbol=symbol,
             exists=exists,
@@ -472,8 +509,9 @@ async def get_model_status():
             metrics=metrics,
             data_points=data_points
         ))
-    
+
     return status_list
+
 
 @app.delete("/models/{symbol}")
 async def delete_model(symbol: str):
@@ -481,12 +519,13 @@ async def delete_model(symbol: str):
     Remove um modelo treinado
     """
     symbol = symbol.upper()
-    
+
     if symbol not in SUPPORTED_SYMBOLS:
-        raise HTTPException(status_code=400, detail=f"Símbolo {symbol} não suportado")
-    
+        raise HTTPException(
+            status_code=400, detail=f"Símbolo {symbol} não suportado")
+
     model_key = get_model_key(symbol)
-    
+
     try:
         # Remover arquivos do modelo
         files_to_remove = [
@@ -494,31 +533,33 @@ async def delete_model(symbol: str):
             os.path.join(MODELS_DIR, f"{model_key}_scaler.joblib"),
             os.path.join(MODELS_DIR, f"{model_key}_config.joblib")
         ]
-        
+
         removed_files = []
         for file_path in files_to_remove:
             if os.path.exists(file_path):
                 os.remove(file_path)
                 removed_files.append(file_path)
-        
+
         # Remover do cache
         if model_key in loaded_models:
             del loaded_models[model_key]
-        
+
         if symbol in model_stats:
             del model_stats[symbol]
-        
+
         return {
             "symbol": symbol,
             "status": "deleted",
             "removed_files": removed_files,
             "message": f"Modelo {symbol} removido com sucesso"
         }
-        
+
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Erro ao remover modelo: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Erro ao remover modelo: {str(e)}")
 
 # ==================== STARTUP ====================
+
 
 @app.on_event("startup")
 async def startup_event():
@@ -528,13 +569,13 @@ async def startup_event():
     print("="*50)
     print(f"📊 Símbolos suportados: {', '.join(SUPPORTED_SYMBOLS)}")
     print(f"📁 Diretório de modelos: {MODELS_DIR}")
-    
+
     # Carregar modelos existentes
     for symbol in SUPPORTED_SYMBOLS:
         model = await load_model_async(symbol)
         if model:
             print(f"✅ Modelo carregado: {symbol}")
-    
+
     print("="*50)
     print("✅ API inicializada com sucesso!")
 
