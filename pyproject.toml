@@ -3,7 +3,7 @@ requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "fiap-fase3-ml-finance"
+name = "fiap-fase4-ml-finance"
 version = "0.1.0"
 description = "Serverless low-cost finance ML demo (FastAPI + yfinance + AWS)"
 authors = [{name="Victor"}]

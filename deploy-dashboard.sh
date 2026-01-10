@@ -6,7 +6,7 @@
 set -e  # Exit on any error
 
 # Configurações
-S3_BUCKET="fiap-fase3-finance-site"
+S3_BUCKET="fiap-fase4-finance-site"
 CLOUDFRONT_ID="E2JS6B4CESU8N8"
 DASHBOARD_URL="https://d1cvtgdwi1a5l6.cloudfront.net"
 DASHBOARD_DIR="dashboard"
