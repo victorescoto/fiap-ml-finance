@@ -19,18 +19,29 @@ from botocore.exceptions import ClientError, NoCredentialsError
 import os
 from typing import List, Dict, Optional, Union
 from pydantic import BaseModel, Field
-import tensorflow as tf
+# TensorFlow será importado apenas quando necessário (lazy loading)
+# import tensorflow as tf
 import joblib
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 import warnings
 warnings.filterwarnings('ignore')
 
-# Importar modelos
-try:
-    from app.ml.lstm_model import LSTMStockPredictor
-except ImportError:
-    from ml.lstm_model import LSTMStockPredictor
+# Lazy import para TensorFlow e LSTM (reduz cold start)
+LSTMStockPredictor = None
+
+
+def get_lstm_predictor():
+    """Lazy loading do LSTMStockPredictor para reduzir cold start"""
+    global LSTMStockPredictor
+    if LSTMStockPredictor is None:
+        try:
+            from app.ml.lstm_model import LSTMStockPredictor as _LSTMStockPredictor
+        except ImportError:
+            from ml.lstm_model import LSTMStockPredictor as _LSTMStockPredictor
+        LSTMStockPredictor = _LSTMStockPredictor
+    return LSTMStockPredictor
+
 
 # Configuração da aplicação
 app = FastAPI(
@@ -73,12 +84,45 @@ app.add_middleware(
 # Configurações
 SUPPORTED_SYMBOLS = ['AAPL', 'MSFT', 'AMZN',
                      'GOOGL', 'META', 'NVDA', 'TSLA', 'DIS']
-MODELS_DIR = 'models'
+
+# Lambda só permite escrita em /tmp
+IS_LAMBDA = os.environ.get('AWS_LAMBDA_FUNCTION_NAME') is not None
+MODELS_DIR = '/tmp/models' if IS_LAMBDA else 'models'
+MODELS_BUCKET = 'fiap-fase4-finance-models'
 os.makedirs(MODELS_DIR, exist_ok=True)
 
 # Cache de modelos carregados
 loaded_models = {}
 model_stats = {}
+
+
+def download_model_from_s3(symbol: str) -> bool:
+    """Baixa modelo do S3 para /tmp/models"""
+    model_key = f"lstm_{symbol.lower()}"
+    files_to_download = [
+        f"{model_key}.keras",
+        f"{model_key}_scaler.joblib",
+        f"{model_key}_config.joblib"
+    ]
+
+    try:
+        s3 = boto3.client('s3')
+        for file_name in files_to_download:
+            local_path = os.path.join(MODELS_DIR, file_name)
+            if not os.path.exists(local_path):
+                print(f"📥 Baixando {file_name} do S3...")
+                s3.download_file(MODELS_BUCKET, file_name, local_path)
+                print(f"✅ {file_name} baixado com sucesso")
+        return True
+    except ClientError as e:
+        if e.response['Error']['Code'] == '404':
+            print(f"⚠️ Modelo {symbol} não encontrado no S3")
+        else:
+            print(f"❌ Erro ao baixar modelo do S3: {e}")
+        return False
+    except Exception as e:
+        print(f"❌ Erro ao baixar modelo do S3: {e}")
+        return False
 
 # ==================== SCHEMAS ====================
 
@@ -169,8 +213,17 @@ async def load_model_async(symbol: str) -> Optional[LSTMStockPredictor]:
     if model_key in loaded_models:
         return loaded_models[model_key]
 
+    # Em Lambda, tentar baixar do S3 primeiro
+    if IS_LAMBDA:
+        model_file = os.path.join(MODELS_DIR, f"{model_key}.keras")
+        if not os.path.exists(model_file):
+            print(
+                f"🔄 Modelo {symbol} não encontrado localmente, tentando S3...")
+            download_model_from_s3(symbol)
+
     try:
-        predictor = LSTMStockPredictor(symbol=symbol)
+        Predictor = get_lstm_predictor()
+        predictor = Predictor(symbol=symbol)
         success = predictor.load_model(
             model_path=MODELS_DIR, model_name=model_key)
 
@@ -347,7 +400,8 @@ async def predict_price(request: PredictionRequest):
             # Modelo não existe, treinar automaticamente
             print(
                 f"🔄 Modelo não encontrado para {symbol}, treinando automaticamente...")
-            predictor = LSTMStockPredictor(symbol=symbol)
+            Predictor = get_lstm_predictor()
+            predictor = Predictor(symbol=symbol)
             results = predictor.full_pipeline(start_date='2020-01-01')
 
             # Adicionar ao cache
@@ -437,7 +491,8 @@ async def train_model(request: TrainingRequest, background_tasks: BackgroundTask
         start_time = datetime.now()
 
         # Criar e treinar modelo
-        predictor = LSTMStockPredictor(symbol=symbol)
+        Predictor = get_lstm_predictor()
+        predictor = Predictor(symbol=symbol)
         results = predictor.full_pipeline(
             start_date=request.start_date,
         )
@@ -578,6 +633,14 @@ async def startup_event():
 
     print("="*50)
     print("✅ API inicializada com sucesso!")
+
+# ==================== LAMBDA HANDLER ====================
+# Mangum adapter para AWS Lambda
+try:
+    from mangum import Mangum
+    lambda_handler = Mangum(app, lifespan="off")
+except ImportError:
+    lambda_handler = None
 
 if __name__ == "__main__":
     import uvicorn

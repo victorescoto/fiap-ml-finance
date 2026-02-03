@@ -23,10 +23,10 @@ function showNotification(message, type = 'info') {
     type === 'success'
       ? 'bg-green-500 text-white'
       : type === 'error'
-      ? 'bg-red-500 text-white'
-      : type === 'warning'
-      ? 'bg-yellow-500 text-black'
-      : 'bg-blue-500 text-white'
+        ? 'bg-red-500 text-white'
+        : type === 'warning'
+          ? 'bg-yellow-500 text-black'
+          : 'bg-blue-500 text-white'
   }`
   notification.innerHTML = `
     <div class="flex items-center">
@@ -225,11 +225,10 @@ function updateStatusCards(data) {
       const firstPrediction = data.predicted_prices[0]
       const changeColor =
         firstPrediction.change >= 0 ? 'text-green-400' : 'text-red-400'
-      document.getElementById(
-        'priceChange'
-      ).innerHTML = `<span class="${changeColor}">${formatPercentage(
-        firstPrediction.change_percent
-      )}</span>`
+      document.getElementById('priceChange').innerHTML =
+        `<span class="${changeColor}">${formatPercentage(
+          firstPrediction.change_percent
+        )}</span>`
     }
   }
 
@@ -237,22 +236,18 @@ function updateStatusCards(data) {
     document.getElementById('modelStatus').textContent = data.model_info
       ? data.model_info.model_type
       : 'LSTM'
-    document.getElementById(
-      'modelConfidence'
-    ).innerHTML = `<span class="${getConfidenceColor(
-      data.confidence
-    )}">${getConfidenceLabel(data.confidence)}</span>`
+    document.getElementById('modelConfidence').innerHTML =
+      `<span class="${getConfidenceColor(
+        data.confidence
+      )}">${getConfidenceLabel(data.confidence)}</span>`
   }
 
   if (data && data.model_metrics) {
     const mape = data.model_metrics.MAPE
     if (mape) {
       document.getElementById('mapeScore').textContent = `${mape.toFixed(2)}%`
-      document.getElementById(
-        'mapeLabel'
-      ).innerHTML = `<span class="${getConfidenceColor(
-        data.confidence
-      )}">Accuracy</span>`
+      document.getElementById('mapeLabel').innerHTML =
+        `<span class="${getConfidenceColor(data.confidence)}">Accuracy</span>`
     }
   }
 
@@ -338,13 +333,16 @@ function updatePriceChart(historicalData, predictions) {
     xaxis: {
       title: 'Date',
       color: '#94A3B8',
-      gridcolor: '#334155'
+      gridcolor: '#334155',
+      automargin: true,
+      tickangle: -45
     },
     yaxis: {
       title: 'Price (USD)',
       color: '#94A3B8',
       gridcolor: '#334155',
-      tickformat: '$,.2f'
+      tickformat: '$,.2f',
+      automargin: true
     },
     plot_bgcolor: 'transparent',
     paper_bgcolor: 'transparent',
@@ -354,7 +352,8 @@ function updatePriceChart(historicalData, predictions) {
       bordercolor: '#475569',
       borderwidth: 1
     },
-    margin: { l: 60, r: 20, t: 60, b: 60 }
+    margin: { l: 80, r: 50, t: 60, b: 80 },
+    autosize: true
   }
 
   const config = {
@@ -400,11 +399,11 @@ function updatePredictionsTable(predictions) {
                   pred.predicted_price
                 )}</td>
                 <td class="px-4 py-3 text-sm ${changeColor}">${formatCurrency(
-                pred.change
-              )}</td>
+                  pred.change
+                )}</td>
                 <td class="px-4 py-3 text-sm ${changeColor}">${formatPercentage(
-                pred.change_percent
-              )}</td>
+                  pred.change_percent
+                )}</td>
               </tr>
             `
             })
@@ -523,6 +522,28 @@ async function loadData() {
   if (historicalData) {
     currentData = historicalData
     updatePriceChart(historicalData, currentPredictions)
+
+    // Mostrar preço atual mesmo sem predições
+    if (historicalData.data && historicalData.data.length > 0) {
+      const lastPrice = historicalData.data[historicalData.data.length - 1]
+      document.getElementById('currentPrice').textContent = formatCurrency(
+        lastPrice.close
+      )
+
+      // Calcular variação do dia anterior
+      if (historicalData.data.length > 1) {
+        const prevPrice = historicalData.data[historicalData.data.length - 2]
+        const change = lastPrice.close - prevPrice.close
+        const changePercent = (change / prevPrice.close) * 100
+        const changeColor = change >= 0 ? 'text-green-400' : 'text-red-400'
+        document.getElementById('priceChange').innerHTML =
+          `<span class="${changeColor}">${formatPercentage(changePercent)}</span>`
+      }
+
+      // Mostrar dados de volume/trading
+      document.getElementById('trainingData').textContent =
+        historicalData.count.toLocaleString() + ' days'
+    }
   }
 }
 

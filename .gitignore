@@ -39,6 +39,7 @@ MANIFEST
 .venv/
 env/
 venv/
+venv_*/
 ENV/
 env.bak/
 venv.bak/
@@ -58,6 +59,7 @@ models/
 *.pkl
 *.joblib
 *.h5
+*.keras
 *.pt
 *.pth
 *.onnx
@@ -96,6 +98,9 @@ terraform.tfvars
 *.p12
 credentials.json
 config.json
+
+# Lock files (opcional - pode remover se quiser versionar)
+uv.lock
 
 # Cache e temporários
 .cache/

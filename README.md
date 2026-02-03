@@ -42,10 +42,29 @@ Desenvolver um modelo de Deep Learning capaz de predizer preços futuros de aç�
 
 ### **4. 🐳 Containerização**
 
-- Docker Compose para orquestração
+- Docker Compose para orquestração local
 - Containers separados para API, Dashboard e Jupyter
 - Volumes persistentes para modelos
 - Health checks automatizados
+
+### **5. ☁️ Infraestrutura AWS (Produção)**
+
+- **Lambda**: API serverless com container Docker
+- **API Gateway**: Endpoint HTTP público
+- **S3**: Armazenamento de modelos e dashboard estático
+- **CloudFront**: CDN para dashboard
+- **ECR**: Registry de imagens Docker
+- **Terraform**: Infrastructure as Code
+
+---
+
+## 🌐 **URLs de Produção (AWS)**
+
+| Serviço          | URL                                                           |
+| ---------------- | ------------------------------------------------------------- |
+| **Dashboard**    | https://d21tj9vgnks14f.cloudfront.net                         |
+| **API**          | https://1ewl3hnfm3.execute-api.us-east-2.amazonaws.com        |
+| **Health Check** | https://1ewl3hnfm3.execute-api.us-east-2.amazonaws.com/health |
 
 ---
 
@@ -143,9 +162,9 @@ GET /models
 
 ---
 
-## 🎯 **URLs de Acesso**
+## 🎯 **URLs de Acesso Local**
 
-Após executar o deploy:
+Após executar o deploy local:
 
 | Serviço          | URL                        | Descrição            |
 | ---------------- | -------------------------- | -------------------- |
@@ -208,19 +227,36 @@ O sistema avalia os modelos com as seguintes métricas:
 fiap-ml-finance/
 ├── app/
 │   ├── fastapi_app/
-│   │   └── main.py              # API principal
+│   │   ├── main.py              # API principal (FastAPI + Lambda handler)
+│   │   ├── deps.py              # Dependências
+│   │   └── schemas.py           # Schemas Pydantic
+│   ├── jobs/
+│   │   ├── ingest_1d.py         # Job ingestão diária
+│   │   ├── ingest_1h.py         # Job ingestão horária
+│   │   └── train_daily.py       # Job treinamento
 │   └── ml/
-│       └── lstm_model.py        # Implementação LSTM
+│       ├── lstm_model.py        # Implementação LSTM
+│       ├── model.py             # Modelo base
+│       └── features.py          # Feature engineering
 ├── dashboard/
-│   ├── index.html              # Interface web
-│   ├── app.js                  # Lógica frontend
-│   └── config.js               # Configuração
-├── notebooks/                  # Jupyter notebooks
-├── models/                     # Modelos treinados
-├── Dockerfile.lstm-api         # Container da API
-├── docker-compose.yml          # Orquestração
-├── deploy-lstm.sh             # Script de deploy
-└── test_api.py               # Testes automatizados
+│   ├── index.html               # Interface web
+│   ├── app-lstm.js              # Lógica frontend LSTM
+│   └── config.example.js        # Configuração exemplo
+├── infra/
+│   └── terraform/
+│       ├── main.tf              # Recursos principais
+│       ├── api.tf               # Lambda + API Gateway
+│       ├── cloudfront.tf        # CDN
+│       └── *.tf                 # Outros recursos
+├── models/                      # Modelos treinados (.keras, .joblib)
+├── Dockerfile.api               # Container da API Lambda
+├── Dockerfile.job               # Container dos jobs
+├── docker-compose.yml           # Orquestração local
+├── deploy-lstm.sh               # Script deploy local
+├── deploy-dashboard.sh          # Script deploy dashboard S3
+├── destroy-aws.sh               # Script destruir infraestrutura
+├── requirements.txt             # Dependências Python
+└── test_api.py                  # Testes automatizados
 ```
 
 ---
@@ -253,6 +289,7 @@ docker exec -it fiap-lstm-api bash
 - **Python 3.11**: Linguagem principal
 - **TensorFlow 2.15**: Framework de Deep Learning
 - **FastAPI**: Framework web moderno e rápido
+- **Mangum**: Adaptador para AWS Lambda
 - **YFinance**: Coleta de dados financeiros
 - **Pandas/Numpy**: Manipulação de dados
 - **Scikit-learn**: Preprocessamento e métricas
@@ -262,14 +299,23 @@ docker exec -it fiap-lstm-api bash
 - **HTML5/CSS3**: Estrutura e estilo
 - **JavaScript ES6+**: Lógica do frontend
 - **Plotly.js**: Visualizações interativas
-- **Bootstrap**: Design responsivo
+- **Tailwind CSS**: Design responsivo
+
+### **Cloud (AWS)**
+
+- **Lambda**: Compute serverless
+- **API Gateway**: HTTP endpoints
+- **S3**: Object storage
+- **CloudFront**: CDN global
+- **ECR**: Container registry
+- **Glue/Athena**: Data Lake (opcional)
 
 ### **DevOps**
 
 - **Docker**: Containerização
-- **Docker Compose**: Orquestração
-- **Nginx**: Proxy reverso
-- **uv**: Gerenciamento de pacotes Python
+- **Docker Compose**: Orquestração local
+- **Terraform**: Infrastructure as Code
+- **GitHub Actions**: CI/CD (opcional)
 
 ---
 
@@ -299,11 +345,14 @@ O LSTM foi escolhido por ser ideal para séries temporais financeiras, capturand
 
 ## 📝 **Entregas do Tech Challenge**
 
-✅ **Modelo de ML**: Implementação LSTM completa  
+✅ **Modelo de ML**: Implementação LSTM completa com TensorFlow  
 ✅ **API RESTful**: FastAPI com documentação Swagger  
-✅ **Scripts/Containers**: Docker Compose para deploy  
-✅ **Link para API**: http://localhost:8000 (após deploy)  
-✅ **Vídeo demonstração**: [Link para vídeo]
+✅ **Deploy Cloud**: AWS Lambda + API Gateway + CloudFront  
+✅ **Dashboard**: Interface web interativa  
+✅ **Containers**: Docker para desenvolvimento e produção  
+✅ **IaC**: Terraform para infraestrutura AWS  
+✅ **Link API Produção**: https://1ewl3hnfm3.execute-api.us-east-2.amazonaws.com  
+✅ **Link Dashboard**: https://d21tj9vgnks14f.cloudfront.net
 
 ---
 
