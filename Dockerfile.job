@@ -1,11 +1,8 @@
 # Dockerfile.job - Jobs de ML para AWS Lambda
 FROM public.ecr.aws/lambda/python:3.11
 
-# Instalar dependências do sistema para pandas/numpy
-RUN yum update -y && yum install -y gcc gcc-c++ make && yum clean all
-
 # Instalar uv para gerenciamento de pacotes
-RUN pip install uv
+RUN pip install --upgrade pip uv
 
 # Copiar arquivos de configuração
 COPY pyproject.toml ${LAMBDA_TASK_ROOT}/
@@ -14,8 +11,8 @@ COPY README.md ${LAMBDA_TASK_ROOT}/
 # Copiar código da aplicação
 COPY app/ ${LAMBDA_TASK_ROOT}/app/
 
-# Instalar dependências usando uv
-RUN cd ${LAMBDA_TASK_ROOT} && uv pip install --system --no-cache-dir -e .
+# Instalar dependências usando pip com wheels pré-compilados (evita compilação)
+RUN cd ${LAMBDA_TASK_ROOT} && pip install --no-cache-dir -e . --prefer-binary
 
 # Definir handler genérico que roteia baseado no JOB_NAME do evento
 CMD ["app.lambda_job_handler.handler"]

@@ -6,37 +6,25 @@ import pandas as pd
 from dateutil.relativedelta import relativedelta
 from datetime import datetime, timezone
 from dotenv import load_dotenv
-from app.ml.features import add_basic_features, make_label
-from app.ml.model import train_classifier, evaluate, save_model
+from app.ml.lstm_model import LSTMStockPredictor
 
 # Carregar variáveis de ambiente
 load_dotenv()
 
 
-def load_local_prices_1d(data_dir: str, months: int = 12) -> pd.DataFrame:
-    base = pathlib.Path(data_dir) / "prices_1d"
-    if not base.exists():
-        return pd.DataFrame()
-    files = list(base.rglob("*.parquet"))
-    if not files:
-        return pd.DataFrame()
-    dfs = [pd.read_parquet(f) for f in files]
-    df = pd.concat(dfs, ignore_index=True)
-    cutoff = datetime.now(timezone.utc) - relativedelta(months=months)
-    df = df[df["timestamp"] >= cutoff]
-    return df
-
-
 def main():
     ap = argparse.ArgumentParser()
-    
+
     # Usar variáveis de ambiente como padrão
-    default_symbols = os.getenv("SYMBOLS", "AAPL,MSFT,AMZN,GOOGL,META,NVDA,TSLA")
+    default_symbols = os.getenv(
+        "SYMBOLS", "AAPL,MSFT,AMZN,GOOGL,META,NVDA,TSLA,DIS")
     default_data_dir = os.getenv("DATA_DIR", "./data")
     default_models_dir = os.getenv("MODELS_DIR", "./models")
-    default_train_period = int(os.getenv("ML_TRAIN_PERIOD", "12"))
-    
-    ap.add_argument("--symbols", default=default_symbols, help="comma separated list")
+    default_train_period = int(
+        os.getenv("ML_TRAIN_PERIOD", "24"))  # 2 anos para LSTM
+
+    ap.add_argument("--symbols", default=default_symbols,
+                    help="comma separated list")
     ap.add_argument("--data", default=default_data_dir)
     ap.add_argument("--models", default=default_models_dir)
     ap.add_argument("--months", type=int, default=default_train_period)
@@ -44,119 +32,195 @@ def main():
     args = ap.parse_args()
 
     symbols = [s.strip() for s in args.symbols.split(",") if s.strip()]
-    df = load_local_prices_1d(args.data, months=args.months)
-    if df.empty:
-        print("No data found. Run ingest_1d first.")
-        return
-
     os.makedirs(args.models, exist_ok=True)
     report = {}
-    for sym in symbols:
-        d = df[df["symbol"] == sym].sort_values("timestamp").rename(columns=str.lower)
-        if d.shape[0] < 200:
-            continue
-        d = add_basic_features(d)
-        d = make_label(d)
-        # simple split: last 90 days as test
-        cutoff = d["timestamp"].max() - pd.Timedelta(days=90)
-        train = d[d["timestamp"] <= cutoff]
-        test = d[d["timestamp"] > cutoff]
-        if train.empty or test.empty:
-            continue
-        clf = train_classifier(train)
-        metrics = evaluate(clf, test)
-        model_path = pathlib.Path(args.models) / f"{sym}_daily_logreg.pkl"
-        if not args.dry_run:
-            save_model(clf, str(model_path))
-        report[sym] = {"metrics": metrics, "model_path": str(model_path)}
 
-    rep_path = pathlib.Path(args.models) / "training_report.json"
-    rep_path.write_text(json.dumps(report, indent=2))
+    print(f"🚀 Iniciando treinamento diário de modelos LSTM...")
+    print(f"📊 Símbolos: {', '.join(symbols)}")
+    print(f"📅 Período de dados: {args.months} meses")
+
+    for sym in symbols:
+        print(f"\n🧠 Treinando modelo LSTM para {sym}...")
+
+        try:
+            # Criar predictor LSTM
+            predictor = LSTMStockPredictor(symbol=sym)
+
+            # Treinar modelo usando pipeline completo
+            start_date = (
+                datetime.now() - relativedelta(months=args.months)).strftime('%Y-%m-%d')
+            results = predictor.full_pipeline(start_date=start_date)
+
+            # Salvar modelo no diretório especificado
+            model_key = f"lstm_{sym.lower()}"
+            if not args.dry_run:
+                predictor.save_model(
+                    model_path=args.models,
+                    model_name=model_key
+                )
+
+            print(f"✅ {sym} treinado com sucesso!")
+            print(f"   - MAE: {results['metrics']['MAE']:.2f}")
+            print(f"   - RMSE: {results['metrics']['RMSE']:.2f}")
+            print(f"   - MAPE: {results['metrics']['MAPE']:.2f}%")
+
+            report[sym] = {
+                "model_type": "LSTM",
+                "metrics": results['metrics'],
+                "data_shape": results['data_shape'],
+                "training_time": results.get('training_time', 0),
+                "model_files": {
+                    "model": f"{model_key}.keras",
+                    "scaler": f"{model_key}_scaler.joblib",
+                    "config": f"{model_key}_config.joblib"
+                }
+            }
+
+        except Exception as e:
+            print(f"❌ Erro no treinamento de {sym}: {str(e)}")
+            report[sym] = {
+                "model_type": "LSTM",
+                "error": str(e),
+                "status": "failed"
+            }
+
+    rep_path = pathlib.Path(args.models) / "lstm_training_report.json"
+    if not args.dry_run:
+        rep_path.write_text(json.dumps(report, indent=2))
+
+    print(f"\n📊 Relatório de Treinamento LSTM:")
     print(json.dumps(report, indent=2))
+
+    # Estatísticas finais
+    successful = sum(1 for r in report.values() if 'error' not in r)
+    failed = sum(1 for r in report.values() if 'error' in r)
+
+    print(f"\n🎯 Resumo Final:")
+    print(f"   ✅ Sucessos: {successful}")
+    print(f"   ❌ Falhas: {failed}")
+    print(f"   📁 Modelos salvos em: {args.models}")
+
+    return report
 
 
 def lambda_handler(event, context):
-    """Handler para AWS Lambda"""
+    """Handler para AWS Lambda - Treinamento LSTM diário"""
     import boto3
-    
+
     # Configurar argumentos para o Lambda
     class Args:
-        symbols = os.getenv("SYMBOLS", "AAPL,MSFT,AMZN,GOOGL,META,NVDA,TSLA")
+        symbols = os.getenv(
+            "SYMBOLS", "AAPL,MSFT,AMZN,GOOGL,META,NVDA,TSLA,DIS")
         data = "/tmp/data"  # Diretório temporário no Lambda
         models = "/tmp/models"
-        months = int(os.getenv("ML_TRAIN_PERIOD", "12"))
+        months = int(os.getenv("ML_TRAIN_PERIOD", "24"))  # 2 anos para LSTM
         dry_run = False
-    
-    # Baixar dados do S3 para /tmp
+
+    print(f"🚀 Iniciando job de treinamento LSTM diário...")
+    print(f"📊 Símbolos: {Args.symbols}")
+
+    # Configurar S3
     s3 = boto3.client("s3")
-    bucket = os.getenv("S3_RAW_BUCKET", "fiap-fase3-raw")
-    
+
     # Criar diretórios
     os.makedirs(Args.data, exist_ok=True)
     os.makedirs(Args.models, exist_ok=True)
-    
-    # Baixar arquivos parquet do S3
+
     try:
-        paginator = s3.get_paginator('list_objects_v2')
-        for page in paginator.paginate(Bucket=bucket, Prefix="prices_1d/"):
-            for obj in page.get('Contents', []):
-                if obj['Key'].endswith('.parquet'):
-                    local_path = pathlib.Path(Args.data) / obj['Key']
-                    local_path.parent.mkdir(parents=True, exist_ok=True)
-                    s3.download_file(bucket, obj['Key'], str(local_path))
+        # Executar treinamento usando LSTM
+        symbols = [s.strip() for s in Args.symbols.split(",") if s.strip()]
+        report = {}
+
+        for sym in symbols:
+            print(f"\n🧠 Treinando modelo LSTM para {sym}...")
+
+            try:
+                # Criar predictor LSTM (coleta dados automaticamente do yfinance)
+                predictor = LSTMStockPredictor(symbol=sym)
+
+                # Treinar modelo
+                start_date = (
+                    datetime.now() - relativedelta(months=Args.months)).strftime('%Y-%m-%d')
+                results = predictor.full_pipeline(start_date=start_date)
+
+                # Salvar modelo localmente
+                model_key = f"lstm_{sym.lower()}"
+                predictor.save_model(
+                    model_path=Args.models,
+                    model_name=model_key
+                )
+
+                print(f"✅ {sym} treinado com sucesso!")
+                report[sym] = {
+                    "model_type": "LSTM",
+                    "status": "success",
+                    "metrics": results['metrics'],
+                    "data_shape": results['data_shape'],
+                    "training_time": results.get('training_time', 0)
+                }
+
+            except Exception as e:
+                print(f"❌ Erro no treinamento de {sym}: {str(e)}")
+                report[sym] = {
+                    "model_type": "LSTM",
+                    "status": "failed",
+                    "error": str(e)
+                }
+
+        # Upload modelos LSTM para S3
+        models_bucket = os.getenv(
+            "S3_MODELS_BUCKET", "fiap-fase4-finance-models")
+        for sym in report:
+            if report[sym].get('status') == 'success':
+                model_key = f"lstm_{sym.lower()}"
+                model_files = [
+                    f"{model_key}.keras",
+                    f"{model_key}_scaler.joblib",
+                    f"{model_key}_config.joblib"
+                ]
+
+                for file_name in model_files:
+                    local_path = pathlib.Path(Args.models) / file_name
+                    if local_path.exists():
+                        s3.upload_file(
+                            str(local_path),
+                            models_bucket,
+                            f"daily/{file_name}"
+                        )
+
+        # Salvar relatório LSTM
+        rep_path = pathlib.Path(Args.models) / "lstm_training_report.json"
+        report_content = json.dumps(report, indent=2)
+        rep_path.write_text(report_content)
+        s3.upload_file(str(rep_path), models_bucket,
+                       "daily/lstm_training_report.json")
+
+        # Estatísticas finais
+        successful = sum(1 for r in report.values()
+                         if r.get('status') == 'success')
+        failed = sum(1 for r in report.values() if r.get('status') == 'failed')
+
+        print(f"\n🎯 Job concluído:")
+        print(f"   ✅ Sucessos: {successful}")
+        print(f"   ❌ Falhas: {failed}")
+
+        return {
+            "statusCode": 200,
+            "body": {
+                "message": "LSTM daily training job completed",
+                "successful_models": successful,
+                "failed_models": failed,
+                "trained_models": list(report.keys()),
+                "report": report
+            }
+        }
+
     except Exception as e:
+        print(f"❌ Erro geral no job: {str(e)}")
         return {
             "statusCode": 500,
-            "body": {"error": f"Failed to download data from S3: {str(e)}"}
+            "body": {"error": f"Training job failed: {str(e)}"}
         }
-    
-    # Executar treinamento
-    symbols = [s.strip() for s in Args.symbols.split(",") if s.strip()]
-    df = load_local_prices_1d(Args.data, months=Args.months)
-    if df.empty:
-        return {
-            "statusCode": 400,
-            "body": {"error": "No data found for training"}
-        }
-
-    report = {}
-    for sym in symbols:
-        d = df[df["symbol"] == sym].sort_values("timestamp").rename(columns=str.lower)
-        if d.shape[0] < 200:
-            continue
-        d = add_basic_features(d)
-        d = make_label(d)
-        cutoff = d["timestamp"].max() - pd.Timedelta(days=90)
-        train = d[d["timestamp"] <= cutoff]
-        test = d[d["timestamp"] > cutoff]
-        if train.empty or test.empty:
-            continue
-        clf = train_classifier(train)
-        metrics = evaluate(clf, test)
-        model_path = pathlib.Path(Args.models) / f"{sym}_daily_logreg.pkl"
-        save_model(clf, str(model_path))
-        report[sym] = {"metrics": metrics, "model_path": str(model_path)}
-
-    # Upload modelos para S3
-    models_bucket = os.getenv("S3_MODELS_BUCKET", "fiap-fase3-models")
-    for sym in report:
-        model_path = pathlib.Path(Args.models) / f"{sym}_daily_logreg.pkl"
-        if model_path.exists():
-            s3.upload_file(str(model_path), models_bucket, f"daily/{sym}_daily_logreg.pkl")
-    
-    # Salvar relatório
-    rep_path = pathlib.Path(Args.models) / "training_report.json"
-    rep_path.write_text(json.dumps(report, indent=2))
-    s3.upload_file(str(rep_path), models_bucket, "daily/training_report.json")
-    
-    return {
-        "statusCode": 200,
-        "body": {
-            "message": "Model training completed successfully",
-            "trained_models": list(report.keys()),
-            "report": report
-        }
-    }
 
 
 if __name__ == "__main__":

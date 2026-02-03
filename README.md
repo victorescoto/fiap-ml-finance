@@ -1,570 +1,371 @@
-# FIAP ML Finance - Sistema de Análise e Predição de Ações
+# 🚀 FIAP Tech Challenge - Fase 4
 
-[![🚀 Status](https://img.shields.io/badge/Status-Production-success)](https://github.com/victorescoto/fiap-ml-finance)
-[![⚡ Serverless](https://img.shields.io/badge/AWS-Serverless-orange)](https://aws.amazon.com/lambda/)
-[![🤖 ML Pipeline](https://img.shields.io/badge/ML-Automated-blue)](https://scikit-learn.org/)
-[![🔒 Security](https://img.shields.io/badge/Security-Audited-green)](./SECURITY.md)
+## 📈 Sistema de Predição de Preços de Ações com LSTM
 
-Sistema completo de análise financeira e predição de ações usando Machine Learning com arquitetura serverless na AWS. Coleta, processa e analisa dados financeiros em tempo real, fornecendo predições de movimento de preços através de uma API REST e dashboard interativo.
+Sistema completo de Machine Learning para predição de preços de ações utilizando redes neurais LSTM (Long Short Term Memory), desenvolvido como solução para o Tech Challenge da Fase 4 da FIAP.
 
-## 📊 Visão Geral
+### 🎯 **Objetivo**
 
-**FIAP ML Finance** é uma plataforma serverless que combina engenharia de dados, machine learning e visualização para análise de mercado financeiro:
-
-### 🎯 Funcionalidades Principais
-- **Coleta Automatizada**: Ingestão de dados financeiros com jobs agendados
-- **Data Lake**: Armazenamento otimizado em S3 com particionamento inteligente  
-- **Machine Learning**: Modelos preditivos para movimento de preços (Up/Down)
-- **API REST**: Endpoints para dados históricos e predições ML
-- **Dashboard Interativo**: Visualizações em tempo real com gráficos candlestick
-- **Pipeline Automatizado**: Jobs de ingestão, processamento e treinamento
-
-### 📈 Símbolos Analisados
-**AAPL**, **MSFT**, **AMZN**, **GOOGL**, **META**, **NVDA**, **TSLA**
-
-### ⚡ Performance Otimizada
-- **Ingestão incremental**: Processa apenas dados novos (99.7% menos dados)
-- **Cache inteligente**: S3 como camada de cache para API
-- **CDN global**: CloudFront para baixa latência
-- **Arquitetura serverless**: Auto-scaling e alta disponibilidade
-
-## 🏗️ Arquitetura do Sistema
-
-### 🎯 Visão da Arquitetura
-```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   Data Sources  │    │   Processing    │    │   Presentation  │
-│                 │    │                 │    │                 │
-│  yFinance API   │───▶│  Lambda Jobs    │───▶│   S3 + API      │───▶ Dashboard
-│  Market Data    │    │  EventBridge    │    │   CloudFront    │    (Users)
-│                 │    │  S3 Data Lake   │    │   API Gateway   │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
-```
-
-### 🔧 Componentes Técnicos
-
-#### **Data Pipeline**
-- **EventBridge**: Orquestração de jobs automatizados
-  - Ingestão diária (00:05 UTC) - dados incrementais
-  - Ingestão horária (a cada hora) - dados recentes  
-  - Treinamento ML (00:30 UTC) - modelos atualizados
-- **S3 Data Lake**: Armazenamento Parquet particionado por símbolo/data
-- **Athena + Glue**: Consultas SQL otimizadas e catalogação de schemas
-
-#### **API & Backend** 
-- **AWS Lambda**: Compute serverless para API e jobs
-- **FastAPI + Mangum**: Framework web moderno com adapter para Lambda
-- **API Gateway**: Exposição REST com CORS e rate limiting
-- **ECR**: Registry para imagens Docker customizadas
-
-#### **Machine Learning**
-- **scikit-learn**: Modelos de classificação (LogisticRegression)
-- **Feature Engineering**: Indicadores técnicos (RSI, Bollinger Bands, SMA)
-- **Predições**: Probabilidade de movimento de preços (Up/Down D+1)
-
-#### **Frontend & CDN**
-- **S3 Static Hosting**: Hospedagem de arquivos estáticos
-- **CloudFront**: CDN global para baixa latência
-- **Plotly.js**: Gráficos financeiros interativos (candlestick)
-- **Tailwind CSS**: Design system moderno e responsivo
-
-#### **DevOps & IaC**
-- **Terraform**: Infrastructure as Code (35+ recursos AWS)
-- **Docker**: Containerização para ambientes Lambda
-- **Make**: Automação de builds e deploys
-
-## 📁 Estrutura do Projeto
-
-```
-├── app/
-│   ├── fastapi_app/           # API REST
-│   │   ├── main.py           # FastAPI app + endpoints
-│   │   ├── schemas.py        # Modelos Pydantic  
-│   │   └── deps.py           # Dependências
-│   ├── jobs/                 # Pipeline de dados
-│   │   ├── ingest_1d.py      # Ingestão diária incremental
-│   │   ├── ingest_1h.py      # Ingestão horária incremental
-│   │   └── train_daily.py    # Treinamento automático ML
-│   ├── ml/                   # Módulos Machine Learning
-│   │   ├── features.py       # Feature engineering
-│   │   └── model.py          # Modelos preditivos
-│   └── lambda_job_handler.py # Dispatcher de jobs
-├── dashboard/                # Frontend
-│   ├── index.html           # Interface principal
-│   ├── app.js               # Lógica JavaScript
-│   ├── styles.css           # Estilos Tailwind
-│   └── config.js            # Configuração (não versionado)
-├── infra/terraform/         # Infrastructure as Code
-│   ├── main.tf              # Recursos AWS principais
-│   ├── jobs.tf              # EventBridge + Lambda jobs
-│   └── variables.tf         # Configurações
-├── Dockerfile.api           # Container API Lambda
-├── Dockerfile.job           # Container jobs Lambda
-├── Makefile                 # Automação de tarefas
-└── pyproject.toml          # Configuração Python
-```
-
-## 🚀 Performance e Otimizações
-
-### ⚡ Estratégia de Ingestão Inteligente
-
-O sistema implementa uma abordagem híbrida que combina **dados históricos pré-carregados** com **atualizações incrementais**, resultando em alta performance:
-
-| Métrica | Processamento Tradicional | Sistema Otimizado | Economia |
-|---------|---------------------------|-------------------|----------|
-| **Dados processados/dia** | 8,393 rows | 28 rows | **99.7%** |
-| **Tempo de execução** | ~120-180s | ~10-15s | **92%** |
-| **Largura de banda** | ~1.2MB/dia | ~4KB/dia | **99.7%** |
-| **Uso Lambda mensal** | 150min | 7.5min | **95%** |
-| **Custo operacional** | Alto | Otimizado | **~95%** |
-
-### 🔄 Fluxo de Dados
-
-#### **Inicialização (Uma vez)**
-1. **Dados históricos diários**: 2 anos de dados OHLCV
-2. **Dados históricos horários**: 30 dias de dados detalhados
-3. **Armazenamento**: S3 com particionamento otimizado
-
-#### **Operação Contínua (Automatizada)**
-1. **Jobs incrementais**: Coletam apenas dados novos
-2. **Merge inteligente**: Combinam com dados existentes sem duplicação
-3. **Cache API**: S3 funciona como cache para consultas rápidas
-
-### 📊 Benefícios da Arquitetura
-- **Escalabilidade**: Auto-scaling nativo do Lambda
-- **Disponibilidade**: Multi-AZ através da AWS
-- **Custo**: Pay-per-use, sem recursos ociosos
-- **Manutenção**: Zero servidor para gerenciar
-
-## 🛠️ Desenvolvimento
-
-### 🚀 Quick Start
-
-```bash
-# 1. Setup inicial
-git clone <repo-url>
-cd fiap-fase3-ml-finance
-make deps
-
-# 2. Configuração
-cp dashboard/config.example.js dashboard/config.js
-# Editar config.js com URLs apropriadas
-
-# 3. Desenvolvimento local
-make run-api
-# API disponível em http://localhost:8000
-```
-
-### 📋 Comandos Principais
-
-#### **Desenvolvimento**
-```bash
-make deps           # Instalar dependências Python
-make run-api        # Executar API local (dev)
-make train-local    # Treinar modelos ML localmente
-```
-
-#### **Deploy & Infraestrutura**
-```bash
-make tf-init        # Inicializar Terraform
-make tf-apply       # Provisionar infraestrutura AWS
-make deploy         # Deploy completo (infra + aplicação)
-make tf-destroy     # Remover infraestrutura
-```
-
-#### **Dashboard**
-```bash
-make dashboard-deploy         # Deploy completo do dashboard
-make dashboard-status         # Verificar status
-./deploy-dashboard.sh full    # Script avançado de deploy
-```
-
-#### **Data Pipeline (Opcional)**
-```bash
-# Inicializações (uma vez)
-make ingest-historical-s3       # Carregar 2 anos de dados diários
-make ingest-hourly-historical-s3 # Carregar 30 dias de dados horários
-
-# Jobs incrementais (automáticos em produção)
-make ingest-1d-s3              # Dados diários incrementais  
-make ingest-1h-s3              # Dados horários incrementais
-```
-
-### 🔧 Pré-requisitos
-
-- **Python 3.11+** 
-- **uv** (gerenciador de pacotes Python)
-- **Docker** (para builds de produção)
-- **AWS CLI** configurado com credenciais
-- **Terraform** (para infraestrutura)
-- **Make** (para automação)
-
-#### Instalação do uv
-```bash
-# Linux/macOS
-curl -LsSf https://astral.sh/uv/install.sh | sh
-
-# ou via pip
-pip install uv
-```
-
-## 🔌 API REST
-
-### 📋 Endpoints Disponíveis
-
-#### **Health Check**
-```http
-GET /health
-```
-**Resposta**: `{"status": "ok"}`
-
-#### **Símbolos Suportados**  
-```http
-GET /symbols
-```
-**Resposta**: `{"symbols": ["AAPL", "MSFT", "AMZN", "GOOGL", "META", "NVDA", "TSLA"]}`
-
-#### **Dados Históricos**
-```http
-GET /latest?symbol={SYMBOL}&interval={INTERVAL}&limit={LIMIT}
-```
-
-**Parâmetros**:
-- `symbol`: Código da ação (ex: AAPL)
-- `interval`: Período (`1h` para horário, `1d` para diário)  
-- `limit`: Número de períodos (padrão: 120)
-
-**Resposta**:
-```json
-{
-  "symbol": "AAPL",
-  "interval": "1h", 
-  "candles": [
-    {
-      "timestamp": "2025-10-07T15:30:00+00:00",
-      "open": 227.50,
-      "high": 228.75, 
-      "low": 227.10,
-      "close": 228.20,
-      "volume": 1247600
-    }
-  ]
-}
-```
-
-#### **Predições Machine Learning** 
-```http
-POST /predict
-Content-Type: application/json
-
-{"symbol": "AAPL"}
-```
-
-**Resposta**:
-```json
-{
-  "symbol": "AAPL",
-  "prob_up": 0.67,
-  "signal": "buy", 
-  "confidence": "high",
-  "asof": "2025-10-07T20:00:00Z"
-}
-```
-
-### 🌐 URLs de Acesso
-- **Desenvolvimento**: `http://localhost:8000`
-- **Produção**: Via API Gateway (URL fornecida após deploy)
-
-## 🧠 Machine Learning
-
-### 🎯 Modelo Preditivo
-
-O sistema utiliza **classificação binária** para predizer movimento de preços no próximo dia (D+1), respondendo a pergunta: *"O preço vai subir ou descer amanhã?"*
-
-### 📊 Features de Entrada
-
-#### **Indicadores Técnicos**
-- **SMA (Simple Moving Average)**: Médias móveis de 5, 10, 20 períodos
-- **RSI (Relative Strength Index)**: Força relativa de compra/venda
-- **Bollinger Bands**: Bandas de volatilidade (superior, inferior, média)
-- **Volume Profile**: Análise de volume transacionado
-
-#### **Features Derivadas** 
-- **Retornos**: Variações percentuais históricas
-- **Volatilidade**: Desvio padrão dos retornos
-- **Momentum**: Taxa de mudança de preços
-- **Price Position**: Posição relativa às bandas de Bollinger
-
-### 🤖 Algoritmo e Treinamento
-
-**Modelo**: `LogisticRegression` (scikit-learn)
-- **Tipo**: Classificação binária supervisionada
-- **Target**: Movimento do preço (Up=1, Down=0)
-- **Treinamento**: Diário automático com dados históricos
-- **Validação**: Cross-validation temporal
-
-### 📈 Output e Sinais
-
-**Predição Retornada**:
-```json
-{
-  "symbol": "AAPL",
-  "prob_up": 0.73,          // Probabilidade de alta (0-1)
-  "signal": "buy",          // Sinal: buy/sell/hold  
-  "confidence": "high",     // Confiança: low/medium/high
-  "asof": "2025-10-07T20:00:00Z"
-}
-```
-
-**Lógica de Sinais**:
-- `prob_up > 0.7`: **BUY** (alta confiança)
-- `prob_up < 0.3`: **SELL** (alta confiança) 
-- `0.3 ≤ prob_up ≤ 0.7`: **HOLD** (incerteza)
-
-## 📊 Dashboard Interativo
-
-### 🎨 Interface de Usuário
-
-Dashboard moderno e responsivo para análise técnica e visualização de predições ML:
-
-#### **Funcionalidades Principais** 
-- **Gráficos Candlestick**: Visualização OHLCV com Plotly.js
-- **Indicadores Técnicos**: RSI, Bollinger Bands, médias móveis
-- **Predições ML**: Sinais de compra/venda com probabilidades
-- **Seleção de Símbolos**: Dropdown com auto-atualização
-- **Intervalos Temporais**: Visualização horária e diária
-- **Design Responsivo**: Otimizado para desktop e mobile
-
-#### **Tecnologias de Frontend**
-- **HTML5 + JavaScript ES6**: Base moderna
-- **Tailwind CSS**: Framework utility-first
-- **Plotly.js**: Gráficos financeiros interativos  
-- **Lucide Icons**: Ícones SVG limpos
-
-### 🌐 Acesso ao Dashboard
-
-#### **Desenvolvimento**
-```bash
-# Executar API local
-make run-api
-
-# Abrir dashboard/index.html no navegador
-# API deve estar rodando em localhost:8000
-```
-
-#### **Produção**
-- **CDN**: CloudFront (URL fornecida após deploy)
-- **Performance**: Cache global com baixa latência
-- **HTTPS**: Certificado SSL automático
-
-### ⚙️ Configuração
-
-```javascript
-// dashboard/config.js
-window.API_BASE = 'https://sua-api.execute-api.region.amazonaws.com';
-window.ENV = 'production';
-window.DEBUG = false;
-```
-
-> 📝 **Nota**: O arquivo `config.js` é específico do ambiente e não é versionado
-
-## ☁️ Deploy na AWS
-
-### 🚀 Infraestrutura Serverless
-
-O sistema provisiona **35+ recursos AWS** automaticamente via Terraform:
-
-#### **Recursos Principais**
-| Serviço | Componente | Propósito |
-|---------|-----------|-----------|
-| **Lambda** | API + Jobs | Compute serverless |
-| **API Gateway** | REST endpoints | Exposição pública da API |
-| **S3** | 4 buckets | Data lake + hosting + models |
-| **CloudFront** | CDN global | Distribuição do dashboard |
-| **EventBridge** | Jobs agendados | Automação do pipeline |
-| **ECR** | Container registry | Imagens Docker |
-| **Athena + Glue** | Data catalog | Consultas SQL otimizadas |
-| **IAM** | Security | Roles e policies |
-
-#### **Jobs Automatizados**
-- **Ingestão Diária** (00:05 UTC): Coleta dados incrementais
-- **Ingestão Horária** (a cada hora): Dados em tempo real
-- **Treinamento ML** (00:30 UTC): Atualização de modelos
-- **Monitoramento**: CloudWatch logs e métricas
-
-### 📋 Deploy Completo
-
-#### **1. Pré-requisitos** 
-```bash
-# Ferramentas necessárias
-aws configure        # Credenciais AWS
-terraform --version  # Infrastructure as Code
-docker --version     # Containerização
-uv --version         # Package manager Python
-```
-
-#### **2. Configuração**
-```bash
-# Clonar repositório
-git clone <repo-url>
-cd fiap-fase3-ml-finance
-
-# Instalar dependências
-make deps
-
-# Configurar ambiente (opcional)
-cp .env.example .env
-# Editar .env com suas configurações
-```
-
-#### **3. Deploy de Infraestrutura**
-```bash
-# Inicializar Terraform
-make tf-init
-
-# Provisionar recursos AWS  
-make tf-apply
-
-# Deploy da aplicação
-make deploy
-```
-
-#### **4. Deploy do Dashboard**
-```bash
-# Configurar dashboard
-cp dashboard/config.example.js dashboard/config.js
-# Editar config.js com URL da API
-
-# Deploy para S3 + CloudFront
-make dashboard-deploy
-```
-
-### 🔒 Configuração de Segurança
-
-> ⚠️ **Importante**: Consulte `SECURITY.md` para diretrizes completas
-
-#### **Variáveis de Ambiente** (`.env`)
-```bash
-AWS_REGION=us-east-2
-PREFIX=fiap-fase3
-SYMBOLS=AAPL,MSFT,AMZN,GOOGL,META,NVDA,TSLA
-```
-
-#### **Arquivos Protegidos**
-- `dashboard/config.js` - Configuração específica do ambiente
-- `.env` - Variáveis sensíveis
-- Credenciais AWS - Via AWS CLI ou IAM roles
-
-## 🔧 Tecnologias Utilizadas
-
-### **Backend & ML**
-- **Python 3.11**: Runtime otimizado para Lambda
-- **FastAPI + Mangum**: API REST serverless
-- **scikit-learn**: Machine Learning (LogisticRegression)
-- **pandas + yfinance**: Processamento de dados financeiros
-- **numpy**: Computação numérica
-
-### **AWS Cloud**
-- **Lambda + API Gateway**: Compute e API serverless
-- **S3 + CloudFront**: Data lake e CDN global
-- **EventBridge**: Orquestração de jobs
-- **Athena + Glue**: Analytics e data catalog
-- **ECR**: Container registry
-
-### **Frontend**
-- **HTML5 + JavaScript ES6**: Base moderna
-- **Tailwind CSS**: Framework CSS utility-first
-- **Plotly.js**: Gráficos interativos avançados
-- **Lucide Icons**: Ícones SVG
-
-### **DevOps**
-- **Terraform**: Infrastructure as Code
-- **Docker**: Containerização
-- **Make + Shell**: Automação de deploy
-- **uv**: Package manager Python rápido
-
-## 📊 Monitoramento
-
-### 🔍 Observabilidade
-
-- **CloudWatch Logs**: Logs centralizados de todos os componentes
-- **CloudWatch Metrics**: Métricas de performance e uso
-- **API Health Check**: Endpoint `/health` para monitoramento
-- **EventBridge Monitoring**: Acompanhamento de execução de jobs
-
-### 📈 Métricas Principais
-
-- **Latência da API**: Tempo de resposta dos endpoints
-- **Taxa de Sucesso**: Percentual de jobs executados com sucesso
-- **Volume de Dados**: Quantidade de dados processados
-- **Uso de Recursos**: Memória e CPU dos Lambda functions
-
-## 🆘 Troubleshooting
-
-### 🔧 Problemas Comuns
-
-#### **API não responde**
-```bash
-# Verificar deploy
-make deploy
-
-# Verificar logs
-aws logs tail /aws/lambda/fiap-fase3-api --since 10m
-```
-
-#### **Dashboard em branco**
-```bash
-# Configurar URLs corretas
-cp dashboard/config.example.js dashboard/config.js
-# Editar config.js com URL da API
-
-# Verificar CORS
-curl -I http://sua-api-url/health
-```
-
-#### **Jobs não executam**
-```bash
-# Verificar EventBridge no console AWS
-# Verificar logs dos jobs
-aws logs tail /aws/lambda/fiap-fase3-job --since 1h
-```
-
-#### **Modelos não carregam**
-```bash
-# Verificar se treinamento foi executado
-make train-local
-
-# Verificar bucket de modelos
-aws s3 ls s3://seu-bucket-models/
-```
-
-## 📈 Roadmap
-
-### ✅ Implementado
-- ✅ Arquitetura serverless completa
-- ✅ Pipeline de dados automatizado
-- ✅ Modelos ML com treinamento automático
-- ✅ Dashboard interativo com Plotly.js
-- ✅ Otimização de performance (99.7% economia)
-- ✅ Segurança auditada e documentada
-
-### 🔮 Próximas Funcionalidades
-- **CI/CD**: GitHub Actions para deploy automatizado
-- **Alertas**: CloudWatch alarms para monitoramento
-- **Cache Avançado**: ElastiCache para predições frequentes
-- **ML Avançado**: Modelos LSTM para séries temporais
-- **Real-time**: WebSocket para updates em tempo real
-- **Multi-region**: Deploy em múltiplas regiões AWS
-
-## 📄 Licença
-
-Este projeto é parte do curso de **Pós-graduação FIAP - Fase 3**.
-
-**Desenvolvido com**:
-- Python 3.11 + FastAPI + scikit-learn
-- AWS Serverless (Lambda, S3, CloudFront, EventBridge)
-- Terraform + Docker + Make
+Desenvolver um modelo de Deep Learning capaz de predizer preços futuros de ações utilizando dados históricos, implementando uma solução completa com API RESTful, interface web e deployment em containers.
 
 ---
 
-🚀 **Sistema em produção com pipeline ML automatizado e arquitetura serverless**
+## 🏗️ **Arquitetura da Solução**
+
+### **1. 🧠 Modelo LSTM**
+
+- **Framework**: TensorFlow/Keras
+- **Tipo**: Deep Learning - LSTM (Long Short Term Memory)
+- **Características**:
+  - Captura dependências temporais em séries financeiras
+  - Preprocessamento automático de dados
+  - Normalização MinMaxScaler
+  - Sequências de 60 dias para predição
+  - Métricas de avaliação: MAE, RMSE, MAPE
+
+### **2. 🌐 API RESTful**
+
+- **Framework**: FastAPI
+- **Funcionalidades**:
+  - Predições em tempo real
+  - Treinamento automatizado de modelos
+  - Coleta de dados históricos
+  - Monitoramento de performance
+  - Documentação interativa (Swagger)
+
+### **3. 🎨 Interface Web**
+
+- Dashboard responsivo em HTML/CSS/JavaScript
+- Visualizações interativas com Plotly.js
+- Interface intuitiva para predições
+- Gráficos de performance dos modelos
+
+### **4. 🐳 Containerização**
+
+- Docker Compose para orquestração local
+- Containers separados para API, Dashboard e Jupyter
+- Volumes persistentes para modelos
+- Health checks automatizados
+
+### **5. ☁️ Infraestrutura AWS (Produção)**
+
+- **Lambda**: API serverless com container Docker
+- **API Gateway**: Endpoint HTTP público
+- **S3**: Armazenamento de modelos e dashboard estático
+- **CloudFront**: CDN para dashboard
+- **ECR**: Registry de imagens Docker
+- **Terraform**: Infrastructure as Code
+
+---
+
+## 🚀 **Como Executar**
+
+### **Pré-requisitos**
+
+- Docker e Docker Compose
+- Python 3.11+ (para desenvolvimento local)
+- 8GB RAM recomendado
+
+### **🎯 Deploy Rápido com Docker**
+
+```bash
+# 1. Clone o repositório
+git clone <repository-url>
+cd fiap-ml-finance
+
+# 2. Execute o script de deploy
+./deploy-lstm.sh
+
+# 3. Aguarde a inicialização (pode demorar alguns minutos)
+```
+
+### **🔧 Desenvolvimento Local**
+
+```bash
+# 1. Instalar dependências
+pip install uv
+uv sync
+
+# 2. Ativar ambiente virtual
+source .venv/bin/activate  # Linux/Mac
+# ou
+.venv\Scripts\activate     # Windows
+
+# 3. Iniciar API
+uv run uvicorn app.fastapi_app.main:app --reload
+
+# 4. Acessar documentação
+# http://localhost:8000/docs
+```
+
+---
+
+## 📊 **Endpoints da API**
+
+### **🏥 Health Check**
+
+```http
+GET /health
+```
+
+### **📋 Símbolos Suportados**
+
+```http
+GET /symbols
+```
+
+**Ações disponíveis**: AAPL, MSFT, AMZN, GOOGL, META, NVDA, TSLA, DIS
+
+### **📈 Dados Históricos**
+
+```http
+GET /historical/{symbol}?period=1y&interval=1d
+```
+
+### **🔮 Predição de Preços**
+
+```http
+POST /predict
+{
+  "symbol": "AAPL",
+  "days": 5,
+  "confidence_interval": false
+}
+```
+
+### **🧠 Treinamento de Modelo**
+
+```http
+POST /train
+{
+  "symbol": "AAPL",
+  "start_date": "2020-01-01",
+  "retrain": false
+}
+```
+
+### **📊 Status dos Modelos**
+
+```http
+GET /models
+```
+
+---
+
+## 🎯 **URLs de Acesso Local**
+
+Após executar o deploy local:
+
+| Serviço          | URL                        | Descrição            |
+| ---------------- | -------------------------- | -------------------- |
+| **API LSTM**     | http://localhost:8000      | API principal        |
+| **Documentação** | http://localhost:8000/docs | Swagger UI           |
+| **Dashboard**    | http://localhost:3000      | Interface web        |
+| **Jupyter Lab**  | http://localhost:8888      | Notebooks de análise |
+
+---
+
+## 🧪 **Testando a API**
+
+### **Script Automático**
+
+```bash
+# Executa bateria completa de testes
+python test_api.py
+```
+
+### **Teste Manual com cURL**
+
+```bash
+# Health check
+curl http://localhost:8000/health
+
+# Predição para AAPL
+curl -X POST "http://localhost:8000/predict" \
+  -H "Content-Type: application/json" \
+  -d '{"symbol":"AAPL","days":3}'
+
+# Treinar modelo
+curl -X POST "http://localhost:8000/train" \
+  -H "Content-Type: application/json" \
+  -d '{"symbol":"AAPL","start_date":"2023-01-01"}'
+```
+
+---
+
+## 📈 **Métricas de Performance**
+
+O sistema avalia os modelos com as seguintes métricas:
+
+- **MAE** (Mean Absolute Error): Erro absoluto médio
+- **RMSE** (Root Mean Square Error): Raiz do erro quadrático médio
+- **MAPE** (Mean Absolute Percentage Error): Erro percentual absoluto médio
+
+### **Níveis de Confiança**
+
+- **muito_alto** (MAPE ≤ 5%): Predição muito confiável
+- **alto** (5% < MAPE ≤ 10%): Predição confiável
+- **médio** (10% < MAPE ≤ 15%): Predição moderada
+- **baixo** (15% < MAPE ≤ 25%): Predição com cautela
+- **muito_baixo** (MAPE > 25%): Predição pouco confiável
+
+---
+
+## 🏗️ **Estrutura do Projeto**
+
+```
+fiap-ml-finance/
+├── app/
+│   ├── fastapi_app/
+│   │   ├── main.py              # API principal (FastAPI + Lambda handler)
+│   │   ├── deps.py              # Dependências
+│   │   └── schemas.py           # Schemas Pydantic
+│   ├── jobs/
+│   │   ├── ingest_1d.py         # Job ingestão diária
+│   │   ├── ingest_1h.py         # Job ingestão horária
+│   │   └── train_daily.py       # Job treinamento
+│   └── ml/
+│       ├── lstm_model.py        # Implementação LSTM
+│       ├── model.py             # Modelo base
+│       └── features.py          # Feature engineering
+├── dashboard/
+│   ├── index.html               # Interface web
+│   ├── app-lstm.js              # Lógica frontend LSTM
+│   └── config.example.js        # Configuração exemplo
+├── infra/
+│   └── terraform/
+│       ├── main.tf              # Recursos principais
+│       ├── api.tf               # Lambda + API Gateway
+│       ├── cloudfront.tf        # CDN
+│       └── *.tf                 # Outros recursos
+├── models/                      # Modelos treinados (.keras, .joblib)
+├── Dockerfile.api               # Container da API Lambda
+├── Dockerfile.job               # Container dos jobs
+├── docker-compose.yml           # Orquestração local
+├── deploy-lstm.sh               # Script deploy local
+├── deploy-dashboard.sh          # Script deploy dashboard S3
+├── destroy-aws.sh               # Script destruir infraestrutura
+├── requirements.txt             # Dependências Python
+└── test_api.py                  # Testes automatizados
+```
+
+---
+
+## 🔧 **Comandos Docker Úteis**
+
+```bash
+# Ver logs em tempo real
+docker-compose logs -f lstm-api
+
+# Reiniciar serviços
+docker-compose restart
+
+# Parar todos os containers
+docker-compose down
+
+# Rebuild completo
+docker-compose up --build --force-recreate
+
+# Acessar container da API
+docker exec -it fiap-lstm-api bash
+```
+
+---
+
+## 📚 **Tecnologias Utilizadas**
+
+### **Backend**
+
+- **Python 3.11**: Linguagem principal
+- **TensorFlow 2.15**: Framework de Deep Learning
+- **FastAPI**: Framework web moderno e rápido
+- **Mangum**: Adaptador para AWS Lambda
+- **YFinance**: Coleta de dados financeiros
+- **Pandas/Numpy**: Manipulação de dados
+- **Scikit-learn**: Preprocessamento e métricas
+
+### **Frontend**
+
+- **HTML5/CSS3**: Estrutura e estilo
+- **JavaScript ES6+**: Lógica do frontend
+- **Plotly.js**: Visualizações interativas
+- **Tailwind CSS**: Design responsivo
+
+### **Cloud (AWS)**
+
+- **Lambda**: Compute serverless
+- **API Gateway**: HTTP endpoints
+- **S3**: Object storage
+- **CloudFront**: CDN global
+- **ECR**: Container registry
+- **Glue/Athena**: Data Lake (opcional)
+
+### **DevOps**
+
+- **Docker**: Containerização
+- **Docker Compose**: Orquestração local
+- **Terraform**: Infrastructure as Code
+- **GitHub Actions**: CI/CD (opcional)
+
+---
+
+## 🎓 **Considerações Acadêmicas**
+
+### **Modelo LSTM**
+
+O LSTM foi escolhido por ser ideal para séries temporais financeiras, capturando:
+
+- **Dependências de longo prazo**: Padrões que se estendem por semanas/meses
+- **Memória seletiva**: Lembrança de informações relevantes
+- **Não-linearidade**: Captura relações complexas nos preços
+
+### **Avaliação do Modelo**
+
+- **Validação temporal**: Split cronológico dos dados
+- **Multiple step prediction**: Predições para múltiplos dias
+- **Métricas robustas**: MAE, RMSE e MAPE para avaliação completa
+
+### **Deployment**
+
+- **Containerização**: Garante reprodutibilidade
+- **API RESTful**: Interface padronizada e documentada
+- **Monitoramento**: Health checks e métricas de performance
+
+---
+
+## 📝 **Entregas do Tech Challenge**
+
+✅ **Modelo de ML**: Implementação LSTM completa com TensorFlow  
+✅ **API RESTful**: FastAPI com documentação Swagger  
+✅ **Deploy Cloud**: AWS Lambda + API Gateway + CloudFront  
+✅ **Dashboard**: Interface web interativa  
+✅ **Containers**: Docker para desenvolvimento e produção  
+✅ **IaC**: Terraform para infraestrutura AWS
+
+---
+
+## 🤝 **Equipe**
+
+**FIAP - Tech Challenge Fase 4**
+
+- Sistema desenvolvido para demonstração de conhecimentos em Deep Learning
+- Foco em aplicação prática de LSTM para séries temporais financeiras
+- Implementação completa de pipeline MLOps
+
+---
+
+## 📞 **Suporte**
+
+Para dúvidas ou problemas:
+
+1. **Verifique os logs**: `docker-compose logs -f`
+2. **Consulte a documentação**: http://localhost:8000/docs
+3. **Execute os testes**: `python test_api.py`
+
+---
+
+## 🎉 **Conclusão**
+
+Este projeto demonstra uma implementação completa de Machine Learning para predição de preços de ações, abrangendo desde a coleta de dados até o deployment em produção. O sistema utiliza as melhores práticas de MLOps e fornece uma base sólida para aplicações financeiras reais.
+
+**🚀 Para começar, execute: `./deploy-lstm.sh`**

@@ -1,0 +1,727 @@
+// FIAP Tech Challenge - Fase 4: LSTM Dashboard App
+// API Configuration
+const API_BASE = window.API_BASE || 'http://localhost:8000'
+
+let currentSymbol = null
+let currentData = null
+let currentPredictions = null
+
+// Utility functions
+function showLoading(show = true, options = {}) {
+  const overlay = document.getElementById('loadingOverlay')
+  if (overlay) {
+    overlay.classList.toggle('hidden', !show)
+    
+    if (show && options.title) {
+      document.getElementById('loadingTitle').textContent = options.title
+      document.getElementById('loadingSubtitle').textContent = options.subtitle || 'This may take a few moments'
+      
+      // Mostrar barra de progresso se solicitado
+      if (options.showProgress) {
+        document.getElementById('progressContainer').classList.remove('hidden')
+        document.getElementById('progressLabel').textContent = options.progressLabel || 'Training Progress'
+      }
+    } else {
+      // Reset ao esconder
+      document.getElementById('progressContainer').classList.add('hidden')
+      resetProgress()
+    }
+  }
+}
+
+let progressInterval = null
+let progressStartTime = null
+
+function startProgress(estimatedDuration = 180000) { // 3 minutos padrão
+  progressStartTime = Date.now()
+  let progress = 0
+  
+  clearInterval(progressInterval)
+  
+  progressInterval = setInterval(() => {
+    const elapsed = Date.now() - progressStartTime
+    const elapsedSeconds = Math.round(elapsed / 1000)
+    
+    // Calcular progresso baseado no tempo (não linear para parecer mais realista)
+    if (elapsed < estimatedDuration * 0.1) {
+      progress = (elapsed / (estimatedDuration * 0.1)) * 10 // 10% nos primeiros 10% do tempo
+    } else if (elapsed < estimatedDuration * 0.8) {
+      progress = 10 + ((elapsed - estimatedDuration * 0.1) / (estimatedDuration * 0.7)) * 70 // 70% nos próximos 70% do tempo
+    } else if (elapsed < estimatedDuration) {
+      progress = 80 + ((elapsed - estimatedDuration * 0.8) / (estimatedDuration * 0.2)) * 15 // 15% nos últimos 20% do tempo
+    } else {
+      progress = Math.min(95, 95 + ((elapsed - estimatedDuration) / estimatedDuration) * 5) // Máximo 95% se passar do tempo
+    }
+    
+    updateProgress(progress, elapsedSeconds, estimatedDuration)
+  }, 1000)
+}
+
+function updateProgress(percent, elapsedSeconds, estimatedDuration) {
+  const progressBar = document.getElementById('progressBar')
+  const progressPercent = document.getElementById('progressPercent')
+  const timeElapsed = document.getElementById('timeElapsed')
+  const timeEstimated = document.getElementById('timeEstimated')
+  
+  if (progressBar) {
+    progressBar.style.width = `${Math.min(percent, 100)}%`
+  }
+  
+  if (progressPercent) {
+    progressPercent.textContent = `${Math.round(percent)}%`
+  }
+  
+  if (timeElapsed) {
+    timeElapsed.textContent = `${elapsedSeconds}s`
+  }
+  
+  if (timeEstimated) {
+    const estimatedSeconds = Math.round(estimatedDuration / 1000)
+    const remainingSeconds = Math.max(0, estimatedSeconds - elapsedSeconds)
+    timeEstimated.textContent = remainingSeconds > 0 ? `~${remainingSeconds}s remaining` : 'Finishing...'
+  }
+}
+
+function completeProgress() {
+  updateProgress(100, 0, 0)
+  setTimeout(() => {
+    clearInterval(progressInterval)
+  }, 1000)
+}
+
+function resetProgress() {
+  clearInterval(progressInterval)
+  updateProgress(0, 0, 0)
+}
+
+function showNotification(message, type = 'info') {
+  console.log(`${type.toUpperCase()}: ${message}`)
+
+  // Criar notificação visual
+  const notification = document.createElement('div')
+  notification.className = `fixed top-4 right-4 p-4 rounded-lg shadow-lg z-50 ${
+    type === 'success'
+      ? 'bg-green-500 text-white'
+      : type === 'error'
+      ? 'bg-red-500 text-white'
+      : type === 'warning'
+      ? 'bg-yellow-500 text-black'
+      : 'bg-blue-500 text-white'
+  }`
+  notification.innerHTML = `
+    <div class="flex items-center">
+      <span class="flex-1">${message}</span>
+      <button onclick="this.parentElement.parentElement.remove()" class="ml-2 font-bold">×</button>
+    </div>
+  `
+
+  document.body.appendChild(notification)
+
+  // Remover após 5 segundos (exceto para training que é importante)
+  if (type !== 'training') {
+    setTimeout(() => {
+      if (notification.parentElement) {
+        notification.remove()
+      }
+    }, 5000)
+  }
+}
+
+function formatCurrency(value) {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD'
+  }).format(value)
+}
+
+function formatPercentage(value) {
+  const sign = value >= 0 ? '+' : ''
+  return `${sign}${value.toFixed(2)}%`
+}
+
+function getConfidenceColor(confidence) {
+  switch (confidence) {
+    case 'very_high':
+      return 'text-green-400'
+    case 'high':
+      return 'text-blue-400'
+    case 'medium':
+      return 'text-yellow-400'
+    case 'low':
+      return 'text-orange-400'
+    case 'very_low':
+      return 'text-red-400'
+    default:
+      return 'text-slate-400'
+  }
+}
+
+function getConfidenceLabel(confidence) {
+  switch (confidence) {
+    case 'very_high':
+      return 'Very High'
+    case 'high':
+      return 'High'
+    case 'medium':
+      return 'Medium'
+    case 'low':
+      return 'Low'
+    case 'very_low':
+      return 'Very Low'
+    default:
+      return 'Unknown'
+  }
+}
+
+// API functions
+async function fetchSymbols() {
+  try {
+    const res = await fetch(`${API_BASE}/symbols`)
+    const data = await res.json()
+    return data.symbols || []
+  } catch (error) {
+    console.error('Error fetching symbols:', error)
+    showNotification('Error loading symbols', 'error')
+    return []
+  }
+}
+
+async function fetchHistoricalData(symbol, period = '6mo') {
+  try {
+    const res = await fetch(`${API_BASE}/historical/${symbol}?period=${period}`)
+    const data = await res.json()
+    return data
+  } catch (error) {
+    console.error('Error fetching historical data:', error)
+    showNotification('Error loading historical data', 'error')
+    return null
+  }
+}
+
+async function predictPrices(symbol, days = 3) {
+  try {
+    showLoading(true, {
+      title: `📈 Generating LSTM Predictions for ${symbol}`,
+      subtitle: `Predicting ${days} days ahead using trained model...`
+    })
+    
+    const res = await fetch(`${API_BASE}/predict`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        symbol: symbol,
+        days: days,
+        confidence_interval: false
+      })
+    })
+    const data = await res.json()
+    showLoading(false)
+    return data
+  } catch (error) {
+    console.error('Error predicting prices:', error)
+    showNotification('Error making predictions', 'error')
+    showLoading(false)
+    return null
+  }
+}
+
+async function trainModel(symbol) {
+  try {
+    // Mostrar loading com barra de progresso
+    showLoading(true, {
+      title: `🧠 Training LSTM Model for ${symbol}`,
+      subtitle: 'Deep learning training in progress... This may take 2-5 minutes',
+      showProgress: true,
+      progressLabel: 'LSTM Training Progress'
+    })
+    
+    // Iniciar barra de progresso (estimativa de 3 minutos)
+    startProgress(180000)
+    
+    showNotification(
+      `🧠 Treinando modelo LSTM para ${symbol}... Acompanhe o progresso na tela!`,
+      'training'
+    )
+
+    const startTime = Date.now()
+
+    const res = await fetch(`${API_BASE}/train`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        symbol: symbol,
+        start_date: '2020-01-01',
+        retrain: false
+      })
+    })
+
+    const endTime = Date.now()
+    const duration = Math.round((endTime - startTime) / 1000)
+
+    const data = await res.json()
+    
+    // Completar progresso
+    completeProgress()
+    
+    setTimeout(() => {
+      showLoading(false)
+    }, 1500) // Dar tempo para ver 100%
+
+    if (data.status === 'success') {
+      showNotification(
+        `✅ Modelo ${symbol} treinado com sucesso em ${duration}s! MAPE: ${data.metrics?.MAPE?.toFixed(
+          2
+        )}%`,
+        'success'
+      )
+    } else if (data.status === 'exists') {
+      showNotification(
+        `ℹ️ Modelo ${symbol} já existe e está pronto para uso`,
+        'info'
+      )
+    } else {
+      showNotification(
+        `❌ Erro no treinamento: ${data.message || 'Training failed'}`,
+        'error'
+      )
+    }
+
+    return data
+  } catch (error) {
+    console.error('Error training model:', error)
+    const errorMsg =
+      error.name === 'AbortError'
+        ? 'Timeout - treinamento ainda pode estar em progresso'
+        : 'Erro de conexão'
+    showNotification(`❌ ${errorMsg}`, 'error')
+    showLoading(false)
+    return null
+  }
+}
+    showLoading(false)
+    return null
+  }
+}
+
+async function fetchModelStatus() {
+  try {
+    const res = await fetch(`${API_BASE}/models`)
+    const data = await res.json()
+    return data
+  } catch (error) {
+    console.error('Error fetching model status:', error)
+    return []
+  }
+}
+
+// UI Update Functions
+function updateStatusCards(data) {
+  if (data && data.current_price) {
+    document.getElementById('currentPrice').textContent = formatCurrency(
+      data.current_price
+    )
+
+    if (data.predicted_prices && data.predicted_prices.length > 0) {
+      const firstPrediction = data.predicted_prices[0]
+      const changeColor =
+        firstPrediction.change >= 0 ? 'text-green-400' : 'text-red-400'
+      document.getElementById(
+        'priceChange'
+      ).innerHTML = `<span class="${changeColor}">${formatPercentage(
+        firstPrediction.change_percent
+      )}</span>`
+    }
+  }
+
+  if (data && data.confidence) {
+    document.getElementById('modelStatus').textContent = data.model_info
+      ? data.model_info.model_type
+      : 'LSTM'
+    document.getElementById(
+      'modelConfidence'
+    ).innerHTML = `<span class="${getConfidenceColor(
+      data.confidence
+    )}">${getConfidenceLabel(data.confidence)}</span>`
+  }
+
+  if (data && data.model_metrics) {
+    const mape = data.model_metrics.MAPE
+    if (mape) {
+      document.getElementById('mapeScore').textContent = `${mape.toFixed(2)}%`
+      document.getElementById(
+        'mapeLabel'
+      ).innerHTML = `<span class="${getConfidenceColor(
+        data.confidence
+      )}">Accuracy</span>`
+    }
+  }
+
+  if (data && data.model_info && data.model_info.training_data) {
+    document.getElementById('trainingData').textContent = Math.round(
+      data.model_info.training_data
+    ).toLocaleString()
+  }
+}
+
+function updatePriceChart(historicalData, predictions) {
+  const container = document.getElementById('priceChart')
+
+  if (!historicalData || !historicalData.data) {
+    container.innerHTML =
+      '<p class="text-slate-400 text-center py-8">No historical data available</p>'
+    return
+  }
+
+  // Prepare historical data
+  const dates = historicalData.data.map(d => d.date)
+  const prices = historicalData.data.map(d => d.close)
+
+  const traces = [
+    {
+      x: dates,
+      y: prices,
+      type: 'scatter',
+      mode: 'lines',
+      name: 'Historical Prices',
+      line: {
+        color: '#3B82F6',
+        width: 2
+      }
+    }
+  ]
+
+  // Add predictions if available
+  if (predictions && predictions.predicted_prices) {
+    const predDates = predictions.predicted_prices.map(p => p.date)
+    const predPrices = predictions.predicted_prices.map(p => p.predicted_price)
+
+    // Connect last historical price with first prediction
+    const connectionDates = [dates[dates.length - 1], predDates[0]]
+    const connectionPrices = [prices[prices.length - 1], predPrices[0]]
+
+    traces.push({
+      x: connectionDates,
+      y: connectionPrices,
+      type: 'scatter',
+      mode: 'lines',
+      name: 'Transition',
+      line: {
+        color: '#10B981',
+        width: 2,
+        dash: 'dot'
+      },
+      showlegend: false
+    })
+
+    traces.push({
+      x: predDates,
+      y: predPrices,
+      type: 'scatter',
+      mode: 'lines+markers',
+      name: 'LSTM Predictions',
+      line: {
+        color: '#10B981',
+        width: 3
+      },
+      marker: {
+        color: '#10B981',
+        size: 6
+      }
+    })
+  }
+
+  const layout = {
+    title: {
+      text: `${historicalData.symbol} - Price History & LSTM Predictions`,
+      font: { color: '#F1F5F9' }
+    },
+    xaxis: {
+      title: 'Date',
+      color: '#94A3B8',
+      gridcolor: '#334155'
+    },
+    yaxis: {
+      title: 'Price (USD)',
+      color: '#94A3B8',
+      gridcolor: '#334155',
+      tickformat: '$,.2f'
+    },
+    plot_bgcolor: 'transparent',
+    paper_bgcolor: 'transparent',
+    font: { color: '#F1F5F9' },
+    legend: {
+      bgcolor: 'rgba(30, 41, 59, 0.8)',
+      bordercolor: '#475569',
+      borderwidth: 1
+    },
+    margin: { l: 60, r: 20, t: 60, b: 60 }
+  }
+
+  const config = {
+    displayModeBar: true,
+    displaylogo: false,
+    modeBarButtonsToRemove: ['pan2d', 'select2d', 'lasso2d', 'autoScale2d']
+  }
+
+  Plotly.newPlot(container, traces, layout, config)
+}
+
+function updatePredictionsTable(predictions) {
+  const container = document.getElementById('predictionsTable')
+
+  if (!predictions || !predictions.predicted_prices) {
+    container.innerHTML =
+      '<p class="text-slate-400 text-center py-8">No predictions available</p>'
+    return
+  }
+
+  const tableHtml = `
+    <div class="overflow-hidden rounded-lg border border-slate-600">
+      <table class="w-full">
+        <thead class="bg-slate-700">
+          <tr>
+            <th class="px-4 py-3 text-left text-sm font-medium text-slate-300">Date</th>
+            <th class="px-4 py-3 text-left text-sm font-medium text-slate-300">Predicted Price</th>
+            <th class="px-4 py-3 text-left text-sm font-medium text-slate-300">Change</th>
+            <th class="px-4 py-3 text-left text-sm font-medium text-slate-300">Change %</th>
+          </tr>
+        </thead>
+        <tbody class="bg-slate-800/50 divide-y divide-slate-600">
+          ${predictions.predicted_prices
+            .map(pred => {
+              const changeColor =
+                pred.change >= 0 ? 'text-green-400' : 'text-red-400'
+              return `
+              <tr class="hover:bg-slate-700/30 transition-colors">
+                <td class="px-4 py-3 text-sm text-white">${new Date(
+                  pred.date
+                ).toLocaleDateString()}</td>
+                <td class="px-4 py-3 text-sm text-white font-medium">${formatCurrency(
+                  pred.predicted_price
+                )}</td>
+                <td class="px-4 py-3 text-sm ${changeColor}">${formatCurrency(
+                pred.change
+              )}</td>
+                <td class="px-4 py-3 text-sm ${changeColor}">${formatPercentage(
+                pred.change_percent
+              )}</td>
+              </tr>
+            `
+            })
+            .join('')}
+        </tbody>
+      </table>
+    </div>
+    <div class="mt-4 text-xs text-slate-400">
+      <p><strong>Model Confidence:</strong> <span class="${getConfidenceColor(
+        predictions.confidence
+      )}">${getConfidenceLabel(predictions.confidence)}</span></p>
+      <p><strong>Prediction Time:</strong> ${new Date(
+        predictions.prediction_date
+      ).toLocaleString()}</p>
+    </div>
+  `
+
+  container.innerHTML = tableHtml
+}
+
+function updateModelMetrics(predictions) {
+  const container = document.getElementById('metricsContainer')
+
+  if (!predictions || !predictions.model_metrics) {
+    container.innerHTML =
+      '<p class="text-slate-400 text-center py-8">No metrics available</p>'
+    return
+  }
+
+  const metrics = predictions.model_metrics
+  const metricsHtml = `
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div class="bg-slate-700/30 rounded-lg p-4 text-center">
+        <div class="text-2xl font-bold text-blue-400">${
+          metrics.MAE?.toFixed(2) || 'N/A'
+        }</div>
+        <div class="text-sm text-slate-400 mt-1">Mean Absolute Error</div>
+        <div class="text-xs text-slate-500 mt-1">Lower is better</div>
+      </div>
+      <div class="bg-slate-700/30 rounded-lg p-4 text-center">
+        <div class="text-2xl font-bold text-green-400">${
+          metrics.RMSE?.toFixed(2) || 'N/A'
+        }</div>
+        <div class="text-sm text-slate-400 mt-1">Root Mean Square Error</div>
+        <div class="text-xs text-slate-500 mt-1">Lower is better</div>
+      </div>
+      <div class="bg-slate-700/30 rounded-lg p-4 text-center">
+        <div class="text-2xl font-bold ${getConfidenceColor(
+          predictions.confidence
+        )}">${metrics.MAPE?.toFixed(2) || 'N/A'}%</div>
+        <div class="text-sm text-slate-400 mt-1">Mean Absolute Percentage Error</div>
+        <div class="text-xs text-slate-500 mt-1">Accuracy indicator</div>
+      </div>
+    </div>
+    <div class="mt-6 bg-slate-700/20 rounded-lg p-4">
+      <h4 class="text-sm font-medium text-slate-300 mb-2">Model Information</h4>
+      <div class="grid grid-cols-2 gap-4 text-sm">
+        <div>
+          <span class="text-slate-400">Model Type:</span>
+          <span class="text-white ml-2">${
+            predictions.model_info?.model_type || 'LSTM'
+          }</span>
+        </div>
+        <div>
+          <span class="text-slate-400">Sequence Length:</span>
+          <span class="text-white ml-2">${
+            predictions.model_info?.sequence_length || 'N/A'
+          }</span>
+        </div>
+        <div>
+          <span class="text-slate-400">Training Data:</span>
+          <span class="text-white ml-2">${
+            predictions.model_info?.training_data || 'N/A'
+          } points</span>
+        </div>
+        <div>
+          <span class="text-slate-400">Confidence:</span>
+          <span class="${getConfidenceColor(
+            predictions.confidence
+          )} ml-2">${getConfidenceLabel(predictions.confidence)}</span>
+        </div>
+      </div>
+    </div>
+  `
+
+  container.innerHTML = metricsHtml
+}
+
+// Main Functions
+async function loadSymbols() {
+  const symbols = await fetchSymbols()
+  const select = document.getElementById('symbolSelect')
+
+  if (symbols.length === 0) {
+    select.innerHTML = '<option>Error loading symbols</option>'
+    return
+  }
+
+  select.innerHTML = symbols
+    .map(symbol => `<option value="${symbol}">${symbol}</option>`)
+    .join('')
+
+  // Set default symbol
+  if (symbols.length > 0) {
+    currentSymbol = symbols[0]
+    select.value = currentSymbol
+  }
+}
+
+async function loadData() {
+  if (!currentSymbol) return
+
+  const period = document.getElementById('periodSelect').value
+  const historicalData = await fetchHistoricalData(currentSymbol, period)
+
+  if (historicalData) {
+    currentData = historicalData
+    updatePriceChart(historicalData, currentPredictions)
+  }
+}
+
+async function makePredictions() {
+  if (!currentSymbol) return
+
+  const days = parseInt(document.getElementById('daysSelect').value)
+  const predictions = await predictPrices(currentSymbol, days)
+
+  if (predictions) {
+    currentPredictions = predictions
+    updateStatusCards(predictions)
+    updatePredictionsTable(predictions)
+    updateModelMetrics(predictions)
+    updatePriceChart(currentData, predictions)
+  }
+}
+
+async function trainModelForSymbol() {
+  if (!currentSymbol) return
+
+  const result = await trainModel(currentSymbol)
+  if (result && result.status === 'success') {
+    // Automatically make predictions after training
+    setTimeout(() => makePredictions(), 1000)
+  }
+}
+
+// Event Listeners
+document.addEventListener('DOMContentLoaded', async function () {
+  // Initialize Lucide icons
+  lucide.createIcons()
+
+  // Load initial data
+  await loadSymbols()
+  await loadData()
+
+  // Setup event listeners
+  document
+    .getElementById('symbolSelect')
+    .addEventListener('change', function (e) {
+      currentSymbol = e.target.value
+      currentPredictions = null // Clear predictions when symbol changes
+      loadData()
+
+      // Clear previous predictions
+      document.getElementById('predictionsTable').innerHTML =
+        '<p class="text-slate-400 text-center py-8">Select a stock and click "Predict with LSTM" to see predictions</p>'
+      document.getElementById('metricsContainer').innerHTML =
+        '<p class="text-slate-400 text-center py-8">Train or select a model to see performance metrics</p>'
+
+      // Reset status cards
+      document.getElementById('currentPrice').textContent = '--'
+      document.getElementById('priceChange').textContent = '--'
+      document.getElementById('modelStatus').textContent = '--'
+      document.getElementById('modelConfidence').textContent = '--'
+      document.getElementById('mapeScore').textContent = '--'
+      document.getElementById('trainingData').textContent = '--'
+    })
+
+  document.getElementById('periodSelect').addEventListener('change', loadData)
+  document
+    .getElementById('predictBtn')
+    .addEventListener('click', makePredictions)
+  document
+    .getElementById('trainBtn')
+    .addEventListener('click', trainModelForSymbol)
+  document.getElementById('refreshBtn').addEventListener('click', function () {
+    loadData()
+    if (currentPredictions) {
+      makePredictions()
+    }
+  })
+
+  // Update last update time
+  function updateLastUpdateTime() {
+    document.getElementById('lastUpdate').textContent =
+      'Last updated: ' + new Date().toLocaleTimeString()
+  }
+
+  updateLastUpdateTime()
+  setInterval(updateLastUpdateTime, 60000) // Update every minute
+
+  // Test API connection
+  try {
+    const response = await fetch(`${API_BASE}/health`)
+    if (response.ok) {
+      document.getElementById('connectionStatus').textContent = 'Connected'
+      document.getElementById('connectionStatus').className = 'text-green-400'
+    } else {
+      throw new Error('API not responding')
+    }
+  } catch (error) {
+    document.getElementById('connectionStatus').textContent = 'Disconnected'
+    document.getElementById('connectionStatus').className = 'text-red-400'
+    showNotification('API connection failed', 'error')
+  }
+})

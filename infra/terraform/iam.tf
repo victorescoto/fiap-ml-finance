@@ -25,10 +25,10 @@ resource "aws_iam_policy" "lambda_s3_rw" {
       Effect = "Allow",
       Action = ["s3:GetObject", "s3:PutObject", "s3:ListBucket"],
       Resource = [
-        "arn:aws:s3:::fiap-fase3-finance-raw",
-        "arn:aws:s3:::fiap-fase3-finance-raw/*",
-        "arn:aws:s3:::fiap-fase3-finance-models",
-        "arn:aws:s3:::fiap-fase3-finance-models/*"
+        "arn:aws:s3:::fiap-fase4-finance-raw",
+        "arn:aws:s3:::fiap-fase4-finance-raw/*",
+        "arn:aws:s3:::fiap-fase4-finance-models",
+        "arn:aws:s3:::fiap-fase4-finance-models/*"
       ]
     }]
   })

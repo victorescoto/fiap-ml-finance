@@ -7,5 +7,5 @@ variable "aws_region" {
 variable "prefix" {
   description = "Resource prefix"
   type        = string
-  default     = "fiap-fase3"
+  default     = "fiap-fase4"
 }

@@ -2,10 +2,10 @@ import os
 import boto3
 from functools import lru_cache
 
-PREFIX = os.getenv("APP_PREFIX", "fiap-fase3")
+PREFIX = os.getenv("APP_PREFIX", "fiap-fase4")
 REGION = os.getenv("AWS_REGION", "us-east-2")
-RAW_BUCKET = f"fiap-fase3-finance-raw"
-MODELS_BUCKET = f"fiap-fase3-finance-models"
+RAW_BUCKET = f"fiap-fase4-finance-raw"
+MODELS_BUCKET = f"fiap-fase4-finance-models"
 
 
 @lru_cache(maxsize=1)

@@ -9,9 +9,9 @@ PY=uv run python
 UVICORN=uv run uvicorn
 
 # Usar variáveis do .env ou valores padrão
-SYMBOLS?=AAPL,MSFT,AMZN,GOOGL,META,NVDA,TSLA
+SYMBOLS?=AAPL,MSFT,AMZN,GOOGL,META,NVDA,TSLA,DIS
 REGION?=us-east-2
-PREFIX?=fiap-fase3
+PREFIX?=fiap-fase4
 API_PORT?=8000
 DATA_DIR?=./data
 MODELS_DIR?=./models
@@ -116,7 +116,7 @@ docker-clean:
 	docker rmi -f $(PREFIX)-api $(PREFIX)-job $(API_IMAGE) $(JOB_IMAGE) 2>/dev/null || true
 
 # ==================== DASHBOARD DEPLOY ====================
-S3_BUCKET?=fiap-fase3-finance-site
+S3_BUCKET?=fiap-fase4-finance-site
 CLOUDFRONT_ID?=E2JS6B4CESU8N8
 
 # Deploy rápido do dashboard (só arquivos alterados)
