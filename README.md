@@ -58,16 +58,6 @@ Desenvolver um modelo de Deep Learning capaz de predizer preços futuros de aç�
 
 ---
 
-## 🌐 **URLs de Produção (AWS)**
-
-| Serviço          | URL                                                           |
-| ---------------- | ------------------------------------------------------------- |
-| **Dashboard**    | https://d21tj9vgnks14f.cloudfront.net                         |
-| **API**          | https://1ewl3hnfm3.execute-api.us-east-2.amazonaws.com        |
-| **Health Check** | https://1ewl3hnfm3.execute-api.us-east-2.amazonaws.com/health |
-
----
-
 ## 🚀 **Como Executar**
 
 ### **Pré-requisitos**
@@ -350,9 +340,7 @@ O LSTM foi escolhido por ser ideal para séries temporais financeiras, capturand
 ✅ **Deploy Cloud**: AWS Lambda + API Gateway + CloudFront  
 ✅ **Dashboard**: Interface web interativa  
 ✅ **Containers**: Docker para desenvolvimento e produção  
-✅ **IaC**: Terraform para infraestrutura AWS  
-✅ **Link API Produção**: https://1ewl3hnfm3.execute-api.us-east-2.amazonaws.com  
-✅ **Link Dashboard**: https://d21tj9vgnks14f.cloudfront.net
+✅ **IaC**: Terraform para infraestrutura AWS
 
 ---
 
